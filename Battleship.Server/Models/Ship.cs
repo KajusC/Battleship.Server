@@ -4,8 +4,17 @@ using System.Linq;
 
 namespace Battleship.Server.Models;
 
+
+public enum ShipOrientation
+{
+    Horizontal,
+    Vertical
+}
+
 public sealed class Ship
 {
+
+
     private readonly HashSet<Coordinate> _positions;
     private readonly HashSet<Coordinate> _hits = new();
 
@@ -31,3 +40,31 @@ public sealed class Ship
         _hits.Add(coordinate);
     }
 }
+
+public static class ShipSpecification
+{
+    public static IReadOnlyDictionary<string, int> StandardFleet { get; } = new Dictionary<string, int>
+    {
+        ["Carrier"] = 5,
+        ["Battleship"] = 4,
+        ["Cruiser"] = 3,
+        ["Submarine"] = 3,
+        ["Destroyer"] = 2
+    };
+}
+
+public sealed class ShipPlacement
+
+{
+    public ShipPlacement(string name, Coordinate start, ShipOrientation orientation)
+    {
+        Name = name;
+        Start = start;
+        Orientation = orientation;
+    }
+
+    public string Name { get; }
+    public Coordinate Start { get; }
+    public ShipOrientation Orientation { get; }
+}
+

@@ -4,6 +4,15 @@ using System.Linq;
 
 namespace Battleship.Server.Models;
 
+public enum GamePhase
+{
+    WaitingForPlayers,
+    Placement,
+    InProgress,
+    Completed
+}
+
+
 public sealed class Game
 {
     private readonly Dictionary<string, GamePlayer> _players = new();
@@ -194,3 +203,23 @@ public sealed record FireResult(
     ShotResolution Resolution,
     bool IsVictory,
     string? NextPlayerId);
+
+
+public sealed class GamePlayer
+{
+    public GamePlayer(string playerId, string connectionId, string name, Board board)
+    {
+        PlayerId = playerId;
+        ConnectionId = connectionId;
+        Name = name;
+        Board = board;
+    }
+
+    public string PlayerId { get; }
+    public string ConnectionId { get; }
+    public string Name { get; }
+    public Board Board { get; }
+    public bool IsReady { get; private set; }
+
+    public void SetReady() => IsReady = true;
+}

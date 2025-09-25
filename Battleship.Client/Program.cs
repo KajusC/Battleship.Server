@@ -10,6 +10,13 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new GameForm());
+
+        using var connection = new ConnectToServer();
+        if (connection.ShowDialog() == DialogResult.OK &&
+            !string.IsNullOrEmpty(connection.ServerUrl) &&
+            !string.IsNullOrEmpty(connection.PlayerName))
+        {
+            Application.Run(new GameForm(connection.ServerUrl, connection.PlayerName));
+        }
     }
 }

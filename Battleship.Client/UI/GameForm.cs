@@ -20,6 +20,7 @@ public sealed class GameForm : Form
     private readonly ShipQueueControl _shipQueueControl;
     private readonly ActionButton _rotateButton;
     private readonly ActionButton _resetButton;
+    private string serverIp;
 
     private BoardState _playerBoardState = new(10);
     private BoardState _opponentBoardState = new(10);
@@ -33,8 +34,10 @@ public sealed class GameForm : Form
     private string? _opponentName;
     private GameStage _stage = GameStage.Connecting;
 
-    public GameForm()
+    public GameForm(string serverIp, string playerName)
     {
+        this.serverIp = serverIp;
+        this._playerName = playerName;
         Text = "Battleship Multiplayer";
         BackColor = Color.FromArgb(35, 40, 55);
         ForeColor = Color.WhiteSmoke;
@@ -94,15 +97,13 @@ public sealed class GameForm : Form
             _resetButton
         });
 
-        _client = new GameClient("https://localhost:7121/gamehub");
+        _client = new GameClient($"{serverIp}/gamehub");
         RegisterClientEvents();
 
         Shown += async (_, _) => await InitializeAsync();
         FormClosing += async (_, _) => await _client.DisposeAsync();
 
         KeyDown += GameForm_KeyDown;
-
-        _playerName = $"Commander{Random.Shared.Next(1000, 9999)}";
     }
 
     protected override void OnPaint(PaintEventArgs e)

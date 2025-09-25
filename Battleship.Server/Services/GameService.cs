@@ -7,7 +7,8 @@ namespace Battleship.Server.Services;
 
 public sealed class GameService
 {
-    private readonly object _lock = new();
+    private static GameService? _instance;
+    private static readonly object _lock = new();
     private readonly Dictionary<string, Game> _games = new();
     private readonly Dictionary<string, Game> _gamesByConnection = new();
     private Game? _waitingGame;
@@ -16,6 +17,21 @@ public sealed class GameService
     public GameService(int boardSize = 10)
     {
         _boardSize = boardSize;
+    }
+
+    public static GameService GetInstance(int boardSize = 10)
+    {
+        if (_instance == null)
+        {
+            lock (_lock)
+            {
+                if (_instance == null)
+                {
+                    _instance = new GameService(boardSize);
+                }
+            }
+        }
+        return _instance;
     }
 
     public JoinGameResult JoinGame(string connectionId, string playerName)

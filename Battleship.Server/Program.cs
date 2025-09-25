@@ -9,7 +9,6 @@ namespace Battleship.Server
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddSignalR();
-            builder.Services.AddSingleton<GameService>();
 
             var app = builder.Build();
 
@@ -17,9 +16,9 @@ namespace Battleship.Server
             {
                 app.UseExceptionHandler("/Error");
                 app.UseHsts();
+                app.UseHttpsRedirection();
             }
 
-            app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();

@@ -100,3 +100,16 @@ public sealed class Board
         }
     }
 }
+
+
+internal sealed class BoardCell
+{
+    public Ship? Ship { get; set; }
+    public bool IsShot { get; set; }
+}
+
+
+public readonly record struct Coordinate(int Row, int Column)
+{
+    public bool IsWithin(int size) => Row >= 0 && Column >= 0 && Row < size && Column < size;
+}

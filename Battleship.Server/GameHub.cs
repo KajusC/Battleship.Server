@@ -13,9 +13,9 @@ public class GameHub : Hub
 {
     private readonly GameService _gameService;
 
-    public GameHub(GameService gameService)
+    public GameHub()
     {
-        _gameService = gameService;
+        _gameService = GameService.GetInstance();
     }
 
     public async Task<JoinGameResponseDto> JoinGame(string playerName)
