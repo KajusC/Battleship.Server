@@ -1,3 +1,5 @@
+using Battleship.Server.Services;
+
 namespace Battleship.Server
 {
     public class Program
@@ -7,6 +9,7 @@ namespace Battleship.Server
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddSignalR();
+            builder.Services.AddSingleton<GameService>();
 
             var app = builder.Build();
 
@@ -23,8 +26,7 @@ namespace Battleship.Server
 
             app.UseAuthorization();
 
-
-            app.MapHub<ChatHub>("/chatHub");
+            app.MapHub<GameHub>("/gamehub");
 
             app.Run();
         }
