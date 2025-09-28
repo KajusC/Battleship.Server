@@ -1,8 +1,8 @@
 namespace Battleship.Server
 {
-    public class Program
+    public class Program1
     {
-        public static void Main(string[] args)
+        public static void Main1(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
