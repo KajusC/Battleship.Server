@@ -1,4 +1,4 @@
-﻿namespace Battleship.Server.Enum
+﻿namespace Battleship.Server.Enums
 {
     public enum TileStatus
     {
