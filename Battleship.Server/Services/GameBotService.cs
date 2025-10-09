@@ -13,9 +13,9 @@ public class GameBotService : BackgroundService
     private NPC theBrainz;
     private GameService _gameservice;
     private string _botConnectionId;
-    public GameBotService(GameService gameservice, BotCommandQueue botQueue)
+    public GameBotService(BotCommandQueue botQueue)
     {
-        _gameservice = gameservice;
+        _gameservice = GameService.GetInstance();
         _botQueue = botQueue;
     }
 
