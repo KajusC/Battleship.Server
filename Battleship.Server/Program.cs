@@ -1,3 +1,5 @@
+using Battleship.Server.Services;
+
 namespace Battleship.Server
 {
     public class Program
@@ -14,17 +16,16 @@ namespace Battleship.Server
             {
                 app.UseExceptionHandler("/Error");
                 app.UseHsts();
+                app.UseHttpsRedirection();
             }
 
-            app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();
 
             app.UseAuthorization();
 
-
-            app.MapHub<ChatHub>("/chatHub");
+            app.MapHub<GameHub>("/gamehub");
 
             app.Run();
         }
