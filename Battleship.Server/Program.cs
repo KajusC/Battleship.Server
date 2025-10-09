@@ -9,7 +9,6 @@ namespace Battleship.Server
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddSignalR();
-            builder.Services.AddSingleton<GameService>();
             builder.Services.AddHostedService<GameBotService>();
             builder.Services.AddSingleton<BotCommandQueue>();
             var app = builder.Build();
