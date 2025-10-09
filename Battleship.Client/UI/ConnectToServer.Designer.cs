@@ -26,85 +26,107 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.buttonConnect = new System.Windows.Forms.Button();
-            this.textBoxServerUrl = new System.Windows.Forms.TextBox();
-            this.textBoxPlayerName = new System.Windows.Forms.TextBox();
-            this.labelServerUrl = new System.Windows.Forms.Label();
-            this.labelPlayerName = new System.Windows.Forms.Label();
-            this.SuspendLayout();
+            buttonConnect = new Button();
+            textBoxServerUrl = new TextBox();
+            textBoxPlayerName = new TextBox();
+            labelServerUrl = new Label();
+            labelPlayerName = new Label();
+            singleplayerCheck = new CheckBox();
+            SuspendLayout();
             // 
             // buttonConnect
             // 
-            this.buttonConnect.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(130)))), ((int)(((byte)(180)))));
-            this.buttonConnect.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.buttonConnect.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.buttonConnect.ForeColor = System.Drawing.Color.White;
-            this.buttonConnect.Location = new System.Drawing.Point(150, 200);
-            this.buttonConnect.Name = "buttonConnect";
-            this.buttonConnect.Size = new System.Drawing.Size(120, 40);
-            this.buttonConnect.TabIndex = 2;
-            this.buttonConnect.Text = "Connect";
-            this.buttonConnect.UseVisualStyleBackColor = false;
-            this.buttonConnect.Click += new System.EventHandler(this.buttonConnect_Click);
+            buttonConnect.BackColor = Color.FromArgb(70, 130, 180);
+            buttonConnect.FlatStyle = FlatStyle.Flat;
+            buttonConnect.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            buttonConnect.ForeColor = Color.White;
+            buttonConnect.Location = new Point(171, 267);
+            buttonConnect.Margin = new Padding(3, 4, 3, 4);
+            buttonConnect.Name = "buttonConnect";
+            buttonConnect.Size = new Size(137, 53);
+            buttonConnect.TabIndex = 2;
+            buttonConnect.Text = "Connect";
+            buttonConnect.UseVisualStyleBackColor = false;
+            buttonConnect.Click += buttonConnect_Click;
             // 
             // textBoxServerUrl
             // 
-            this.textBoxServerUrl.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.textBoxServerUrl.Location = new System.Drawing.Point(50, 100);
-            this.textBoxServerUrl.Name = "textBoxServerUrl";
-            this.textBoxServerUrl.Size = new System.Drawing.Size(320, 25);
-            this.textBoxServerUrl.TabIndex = 0;
-            this.textBoxServerUrl.Text = "http://localhost:5000";
+            textBoxServerUrl.Font = new Font("Segoe UI", 10F);
+            textBoxServerUrl.Location = new Point(57, 133);
+            textBoxServerUrl.Margin = new Padding(3, 4, 3, 4);
+            textBoxServerUrl.Name = "textBoxServerUrl";
+            textBoxServerUrl.Size = new Size(365, 30);
+            textBoxServerUrl.TabIndex = 0;
+            textBoxServerUrl.Text = "http://localhost:5000";
             // 
             // textBoxPlayerName
             // 
-            this.textBoxPlayerName.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.textBoxPlayerName.Location = new System.Drawing.Point(50, 160);
-            this.textBoxPlayerName.Name = "textBoxPlayerName";
-            this.textBoxPlayerName.Size = new System.Drawing.Size(320, 25);
-            this.textBoxPlayerName.TabIndex = 1;
+            textBoxPlayerName.Font = new Font("Segoe UI", 10F);
+            textBoxPlayerName.Location = new Point(57, 213);
+            textBoxPlayerName.Margin = new Padding(3, 4, 3, 4);
+            textBoxPlayerName.Name = "textBoxPlayerName";
+            textBoxPlayerName.Size = new Size(365, 30);
+            textBoxPlayerName.TabIndex = 1;
             // 
             // labelServerUrl
             // 
-            this.labelServerUrl.AutoSize = true;
-            this.labelServerUrl.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.labelServerUrl.ForeColor = System.Drawing.Color.White;
-            this.labelServerUrl.Location = new System.Drawing.Point(50, 80);
-            this.labelServerUrl.Name = "labelServerUrl";
-            this.labelServerUrl.Size = new System.Drawing.Size(136, 19);
-            this.labelServerUrl.TabIndex = 3;
-            this.labelServerUrl.Text = "Server IP Address:";
+            labelServerUrl.AutoSize = true;
+            labelServerUrl.Font = new Font("Segoe UI", 10F);
+            labelServerUrl.ForeColor = Color.White;
+            labelServerUrl.Location = new Point(57, 107);
+            labelServerUrl.Name = "labelServerUrl";
+            labelServerUrl.Size = new Size(146, 23);
+            labelServerUrl.TabIndex = 3;
+            labelServerUrl.Text = "Server IP Address:";
             // 
             // labelPlayerName
             // 
-            this.labelPlayerName.AutoSize = true;
-            this.labelPlayerName.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.labelPlayerName.ForeColor = System.Drawing.Color.White;
-            this.labelPlayerName.Location = new System.Drawing.Point(50, 140);
-            this.labelPlayerName.Name = "labelPlayerName";
-            this.labelPlayerName.Size = new System.Drawing.Size(91, 19);
-            this.labelPlayerName.TabIndex = 4;
-            this.labelPlayerName.Text = "Player Name:";
+            labelPlayerName.AutoSize = true;
+            labelPlayerName.Font = new Font("Segoe UI", 10F);
+            labelPlayerName.ForeColor = Color.White;
+            labelPlayerName.Location = new Point(57, 187);
+            labelPlayerName.Name = "labelPlayerName";
+            labelPlayerName.Size = new Size(111, 23);
+            labelPlayerName.TabIndex = 4;
+            labelPlayerName.Text = "Player Name:";
+            // 
+            // singleplayerCheck
+            // 
+            singleplayerCheck.BackColor = Color.LightGray;
+            singleplayerCheck.FlatStyle = FlatStyle.Flat;
+            singleplayerCheck.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            singleplayerCheck.ForeColor = Color.DarkGreen;
+            singleplayerCheck.Location = new Point(57, 36);
+            singleplayerCheck.Margin = new Padding(3, 4, 3, 4);
+            singleplayerCheck.Name = "singleplayerCheck";
+            singleplayerCheck.Padding = new Padding(6, 7, 6, 7);
+            singleplayerCheck.Size = new Size(229, 54);
+            singleplayerCheck.TabIndex = 5;
+            singleplayerCheck.Text = "Singleplayer Mode";
+            singleplayerCheck.UseVisualStyleBackColor = false;
+            singleplayerCheck.CheckedChanged += singleplayerCheck_CheckedChanged;
             // 
             // ConnectToServer
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(35)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
-            this.ClientSize = new System.Drawing.Size(420, 280);
-            this.Controls.Add(this.labelPlayerName);
-            this.Controls.Add(this.labelServerUrl);
-            this.Controls.Add(this.textBoxPlayerName);
-            this.Controls.Add(this.textBoxServerUrl);
-            this.Controls.Add(this.buttonConnect);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.Name = "ConnectToServer";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Connect to Battleship Server";
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.FromArgb(35, 40, 55);
+            ClientSize = new Size(480, 373);
+            Controls.Add(labelPlayerName);
+            Controls.Add(labelServerUrl);
+            Controls.Add(textBoxPlayerName);
+            Controls.Add(textBoxServerUrl);
+            Controls.Add(buttonConnect);
+            Controls.Add(singleplayerCheck);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            Margin = new Padding(3, 4, 3, 4);
+            MaximizeBox = false;
+            MinimizeBox = false;
+            Name = "ConnectToServer";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "Connect to Battleship Server";
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         private System.Windows.Forms.Button buttonConnect;
@@ -112,11 +134,13 @@
         private System.Windows.Forms.TextBox textBoxPlayerName;
         private System.Windows.Forms.Label labelServerUrl;
         private System.Windows.Forms.Label labelPlayerName;
+        private System.Windows.Forms.CheckBox singleplayerCheck;
 
         private async void buttonConnect_Click(object sender, System.EventArgs e)
         {
             await ConnectButtonClickAsync();
         }
+        
 
         private async Task ConnectButtonClickAsync()
         {

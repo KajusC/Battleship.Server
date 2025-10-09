@@ -9,7 +9,9 @@ namespace Battleship.Server
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddSignalR();
-
+            builder.Services.AddSingleton<GameService>();
+            builder.Services.AddHostedService<GameBotService>();
+            builder.Services.AddSingleton<BotCommandQueue>();
             var app = builder.Build();
 
             if (!app.Environment.IsDevelopment())
@@ -24,7 +26,7 @@ namespace Battleship.Server
             app.UseRouting();
 
             app.UseAuthorization();
-
+            
             app.MapHub<GameHub>("/gamehub");
 
             app.Run();

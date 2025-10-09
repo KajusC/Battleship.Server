@@ -32,13 +32,17 @@ public sealed class GameForm : Form
     private bool _isMyTurn;
     private string _playerName;
     private string? _opponentName;
+    private bool isSinglePlayer;
+
     private GameStage _stage = GameStage.Connecting;
 
-    public GameForm(string serverIp, string playerName)
+    public GameForm(string serverIp, string playerName,bool isSinglePlayer)
     {
         this.serverIp = serverIp;
         this._playerName = playerName;
+        this.isSinglePlayer = isSinglePlayer;
         Text = "Battleship Multiplayer";
+        if (isSinglePlayer) Text = "Battleship Singleplayer";
         BackColor = Color.FromArgb(35, 40, 55);
         ForeColor = Color.WhiteSmoke;
         ClientSize = new Size(1100, 680);
@@ -116,8 +120,8 @@ public sealed class GameForm : Form
         using var titleFont = new Font("Segoe UI", 20f, FontStyle.Bold, GraphicsUnit.Point);
         using var infoFont = new Font("Segoe UI", 10f, FontStyle.Regular, GraphicsUnit.Point);
         using var statusFont = new Font("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Point);
-
-        g.DrawString("Battleship Multiplayer", titleFont, Brushes.WhiteSmoke, new PointF(40, 40));
+        if (isSinglePlayer) g.DrawString("Battleship SinglePlayer", titleFont, Brushes.WhiteSmoke, new PointF(40, 40));
+        else g.DrawString("Battleship Multiplayer", titleFont, Brushes.WhiteSmoke, new PointF(40, 40));
         g.DrawString($"Player: {_playerName}", infoFont, Brushes.WhiteSmoke, new PointF(40, 90));
         g.DrawString($"Stage: {_stage}", infoFont, Brushes.WhiteSmoke, new PointF(40, 110));
 
@@ -143,7 +147,7 @@ public sealed class GameForm : Form
             await _client.ConnectAsync();
             AddLog("Connected. Joining game lobby...");
 
-            var joinResponse = await _client.JoinGameAsync(_playerName);
+            var joinResponse = await _client.JoinGameAsync(_playerName,isSinglePlayer);
             ConfigureBoardSizes(joinResponse.BoardSize);
             AddLog(joinResponse.Message);
 

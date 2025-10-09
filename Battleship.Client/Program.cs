@@ -16,7 +16,8 @@ internal static class Program
             !string.IsNullOrEmpty(connection.ServerUrl) &&
             !string.IsNullOrEmpty(connection.PlayerName))
         {
-            Application.Run(new GameForm(connection.ServerUrl, connection.PlayerName));
+            Console.WriteLine(connection.isSingleplayer);
+            Application.Run(new GameForm(connection.ServerUrl, connection.PlayerName, connection.isSingleplayer));
         }
     }
 }

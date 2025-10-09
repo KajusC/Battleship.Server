@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Battleship.Server.Classes;
 using Battleship.Server.Models;
 using Battleship.Server.Models.Dtos;
 using Battleship.Server.Services;
@@ -12,19 +13,25 @@ namespace Battleship.Server;
 public class GameHub : Hub
 {
     private readonly GameService _gameService;
+    private readonly BotCommandQueue _botQueue;
 
-    public GameHub()
+    public GameHub(BotCommandQueue botQueue)
     {
         _gameService = GameService.GetInstance();
+
+        _botQueue = botQueue;
     }
 
-    public async Task<JoinGameResponseDto> JoinGame(string playerName)
+
+    public async Task<JoinGameResponseDto> JoinGame(string playerName, bool IsSinglePlayer)
     {
         try
         {
             var result = _gameService.JoinGame(Context.ConnectionId, playerName.Trim());
-            await Groups.AddToGroupAsync(Context.ConnectionId, result.Game.Id);
+//          result = _gameService.JoinGame(Context.ConnectionId, playerName.Trim(), IsSinglePlayer);
 
+            await Groups.AddToGroupAsync(Context.ConnectionId, result.Game.Id);
+            
             var response = new JoinGameResponseDto
             {
                 GameId = result.Game.Id,
@@ -35,7 +42,10 @@ public class GameHub : Hub
                     ? "Waiting for an opponent to join."
                     : "Opponent joined. Prepare to place your fleet."
             };
-
+            if (IsSinglePlayer)
+            { 
+                await _botQueue.EnqueueGameAsync(result.Game.Id);
+            }
             if (result.IsWaitingForOpponent)
             {
                 await Clients.Caller.SendAsync("WaitingForOpponent", new WaitingStatusDto
@@ -56,6 +66,15 @@ public class GameHub : Hub
         {
             throw new HubException(ex.Message);
         }
+    }
+    public async Task JoinGameAsBot(string gameId)
+    {
+        var result = _gameService.JoinGame(Context.ConnectionId, "Bot");
+        await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
+        await Clients.Caller.SendAsync("BotConnectionAssigned", result.Player.PlayerId);
+        await NotifyOpponentJoined(result.Game, result.Player);
+        await NotifyPlacementPhase(result.Game);
+        
     }
 
     public async Task<PlacementResultDto> PlaceShips(List<ShipPlacementDto> placements)
@@ -148,9 +167,10 @@ public class GameHub : Hub
                 CurrentPlayerId = fireResult.NextPlayerId
             });
         }
-
+ 
         return shotDto;
     }
+
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
@@ -226,6 +246,8 @@ public class GameHub : Hub
         var fleet = _gameService.GetFleetDefinition()
             .Select(s => new ShipDefinitionDto { Name = s.Key, Length = s.Value })
             .ToArray();
+
+
 
         var dto = new GameStartDto
         {

@@ -1,3 +1,4 @@
+using Battleship.Server.Classes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +18,8 @@ public sealed class Game
 {
     private readonly Dictionary<string, GamePlayer> _players = new();
     private readonly Dictionary<string, GamePlayer> _playersByConnection = new();
-    private readonly int _boardSize;
+    public readonly int _boardSize;
+    
 
     public Game(int boardSize)
     {
@@ -43,6 +45,7 @@ public sealed class Game
         var player = new GamePlayer(playerId, connectionId, name, new Board(_boardSize));
         _players.Add(playerId, player);
         _playersByConnection.Add(connectionId, player);
+     
 
         if (_players.Count == 2)
         {
@@ -98,12 +101,16 @@ public sealed class Game
 
         var ships = placementsList.Select(p => BuildShip(p)).ToList();
         player.Board.PlaceShips(ships);
+
         player.SetReady();
 
         if (Players.All(p => p.IsReady))
         {
             StartGame();
+            return;
         }
+        
+
     }
 
     public FireResult Fire(GamePlayer shooter, Coordinate coordinate)
@@ -141,6 +148,7 @@ public sealed class Game
         var random = new Random();
         var players = Players.ToList();
         CurrentTurnPlayerId = players[random.Next(players.Count)].PlayerId;
+        
     }
 
     private void ValidatePlacements(IReadOnlyCollection<ShipPlacement> placements)
@@ -205,7 +213,7 @@ public sealed record FireResult(
     string? NextPlayerId);
 
 
-public sealed class GamePlayer
+public class GamePlayer
 {
     public GamePlayer(string playerId, string connectionId, string name, Board board)
     {
