@@ -7,6 +7,7 @@ using Battleship.Server.Services;
 using System.Collections;
 using System.Data;
 using System.IO;
+using System.Reflection.Metadata.Ecma335;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Battleship.Server.Models
@@ -118,8 +119,16 @@ namespace Battleship.Server.Models
             Coordinate coor = _strategy.DoStrategy(enemy_grid);
             if (coor.Row == -1)
             {
-                SetStrategy(new StrategySearchRandom());
+                SetStrategy(new StrategyCheckerSearch(enemy_grid));
+                
+                
                 coor = _strategy.DoStrategy(enemy_grid);
+                if (coor.Row == -1)
+                {
+                    SetStrategy(new StrategySearchRandom());
+                    coor = _strategy.DoStrategy(enemy_grid);
+                }
+
             }
             //Console.WriteLine("strategy {0} coord: {1},{2}", _strategy.GetType().ToString(), coor.Row,coor.Column);
             return coor;
@@ -154,12 +163,62 @@ namespace Battleship.Server.Models
         public List<ShipPlacementDto> ShipPlacements(IReadOnlyDictionary<string, int> Fleet, int Rows, int Columns)
         {
             List<ShipPlacementDto> placements = new List<ShipPlacementDto>();
-            int i = 1;
-
+            //int i = 1;
+            Random rand = new Random();
+            int gridSize = Rows;
+            HashSet<(int, int)> occupied = new();
             foreach (KeyValuePair<string, int> ship in Fleet)
             {
-                placements.Add(new ShipPlacementDto { ShipName = ship.Key, Row = i, Column = 1, Orientation = ShipOrientation.Horizontal.ToString() });
-                i++;
+                //placements.Add(new ShipPlacementDto { ShipName = ship.Key, Row = i, Column = 1, Orientation = ShipOrientation.Horizontal.ToString() });
+                int length = ship.Value;
+                string name = ship.Key;
+                bool placed = false;
+                while (!placed)
+                {
+                    var orientation = rand.Next(2) == 0 ? ShipOrientation.Horizontal : ShipOrientation.Vertical;
+
+                    int row, col;
+
+                    if (orientation == ShipOrientation.Horizontal)
+                    {
+                        row = rand.Next(0, gridSize);
+                        col = rand.Next(0, gridSize - length + 1);
+                    }
+                    else // Vertical
+                    {
+                        row = rand.Next(0, gridSize - length + 1);
+                        col = rand.Next(0, gridSize);
+                    }
+
+                    // Collect all coordinates this ship would occupy
+                    var cells = new List<(int, int)>();
+                    for (int k = 0; k < length; k++)
+                    {
+                        int r = orientation == ShipOrientation.Horizontal ? row : row + k;
+                        int c = orientation == ShipOrientation.Horizontal ? col + k : col;
+                        cells.Add((r, c));
+                    }
+
+                    // Check for overlap
+                    if (cells.Any(cell => occupied.Contains(cell)))
+                        continue;
+
+                    // Mark as occupied
+                    foreach (var cell in cells)
+                        occupied.Add(cell);
+
+                    // Add to placements
+                    placements.Add(new ShipPlacementDto
+                    {
+                        ShipName = name,
+                        Row = row,
+                        Column = col,
+                        Orientation = orientation.ToString()
+                    });
+
+                    placed = true;
+                }
+                //i++;
             }
             return placements;
         }
@@ -212,24 +271,41 @@ namespace Battleship.Server.Models
     //        return placements;
     //    }
     //}
-
-    public class StrategyMiddleTile : IStrategy
+    public class StrategyCheckerSearch : IStrategy
     {
-        ShipOrientation orientation;
-        Coordinate c;
-        public StrategyMiddleTile(int x, int y, ShipOrientation o, int d)
+        private List<Coordinate> Coordinates;
+        public StrategyCheckerSearch(Grid grid)
         {
-            c = new Coordinate(x,y);
-            this.orientation = ShipOrientation.Horizontal;
-
+            Coordinates = new List<Coordinate>();
+            for (int i = 0; i < grid.GetSize_x(); i++)
+            {
+                for (int j = 0; j < grid.GetSize_y(); j++)
+                {
+                    if( (i%2==0 && j%2==0) || (i % 2 == 1 && j % 2 == 1))
+                    Coordinates.Add(new Coordinate(i, j));
+                }
+            }
+            Random rand = new Random();
+            Coordinates = Coordinates.OrderBy(_ => rand.Next()).ToList();
         }
-
         public Coordinate DoStrategy(object data)
         {
-            
-            return new Coordinate(0, 0);
+            Grid grid = data as Grid;
+            int x, y;
+            foreach( Coordinate coor in Coordinates)
+            {
+                if( grid.GetTile(coor) == TileStatus.Unknown)
+                {
+                    return coor;
+                }
+            }
+            //
+            //Algorithm goes here
+            //c = new Coordinate();
+            return new Coordinate(-1,-1);
         }
     }
+
     public class StrategyCornerTile : IStrategy
     {
         public Coordinate c;

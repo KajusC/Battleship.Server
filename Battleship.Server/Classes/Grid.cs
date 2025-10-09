@@ -39,6 +39,10 @@ namespace Battleship.Server.Classes
         {
             return Tiles[x, y];
         }
+        public TileStatus GetTile(Coordinate c)
+        {
+            return Tiles[c.Row, c.Column];
+        }
         public int GetSize_x()
         {
             return size_x;
