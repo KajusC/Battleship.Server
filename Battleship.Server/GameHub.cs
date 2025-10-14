@@ -15,11 +15,10 @@ public class GameHub : Hub
     private readonly GameService _gameService;
     private readonly BotCommandQueue _botQueue;
 
-    public GameHub(BotCommandQueue botQueue)
+    public GameHub(BotCommandQueue botQueue, GameService gameService)
     {
-        _gameService = GameService.GetInstance();
-
         _botQueue = botQueue;
+        _gameService = gameService;
     }
 
 

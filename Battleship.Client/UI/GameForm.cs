@@ -181,6 +181,12 @@ public sealed class GameForm : Form
             Invalidate();
         });
 
+        _client.GamePhaseChanged += message => SafeInvoke(() =>
+        {
+            _stage = MapPhaseToStage(message.NewPhase);
+            Invalidate();
+        });
+
         _client.OpponentJoined += message => SafeInvoke(() =>
         {
             _opponentName = message.OpponentName;
@@ -361,6 +367,18 @@ public sealed class GameForm : Form
         {
             AddLog($"Shot failed: {ex.Message}");
         }
+    }
+
+    private static GameStage MapPhaseToStage(string phase)
+    {
+        return phase switch
+        {
+            "WaitingForPlayers" => GameStage.WaitingForOpponent,
+            "Placement" => GameStage.Placement,
+            "InProgress" => GameStage.InProgress,
+            "Completed" => GameStage.Completed,
+            _ => GameStage.Connecting
+        };
     }
 
     private bool CanPlaceShip(int row, int column, int length, ShipOrientation orientation)

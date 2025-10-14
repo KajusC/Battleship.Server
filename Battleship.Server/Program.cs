@@ -1,3 +1,4 @@
+using Battleship.Server.Models;
 using Battleship.Server.Services;
 
 namespace Battleship.Server
@@ -9,8 +10,10 @@ namespace Battleship.Server
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddSignalR();
-            builder.Services.AddHostedService<GameBotService>();
             builder.Services.AddSingleton<BotCommandQueue>();
+            builder.Services.AddSingleton<IGameObserver, GameHubObserver>();
+            builder.Services.AddSingleton<GameService>();
+            builder.Services.AddHostedService<GameBotService>();
             var app = builder.Build();
 
             if (!app.Environment.IsDevelopment())

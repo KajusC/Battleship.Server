@@ -2,6 +2,7 @@ using Battleship.Server.Classes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static Battleship.Server.Models.Game;
 
 namespace Battleship.Server.Models;
 
@@ -13,23 +14,55 @@ public enum GamePhase
     Completed
 }
 
+public interface IGameObserver
+{
+    void OnPhaseChanged(Game game, GamePhase oldPhase, GamePhase newPhase);
+    void OnTurnChanged(Game game, string? oldPlayerId, string? newPlayerId);
+}
+
 
 public sealed class Game
 {
+    private GamePhase _phase;
+    private readonly List<IGameObserver> _observers = new();
     private readonly Dictionary<string, GamePlayer> _players = new();
     private readonly Dictionary<string, GamePlayer> _playersByConnection = new();
     public readonly int _boardSize;
-    
+
+    public GamePhase Phase
+    {
+        get => _phase;
+        private set
+        {
+            if (_phase != value)
+            {
+                var oldPhase = _phase;
+                _phase = value;
+                NotifyPhaseChanged(oldPhase, value);
+            }
+        }
+    }
+
+    public void Subscribe(IGameObserver observer)
+    {
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+        }
+    }
+
+    public void Unsubscribe(IGameObserver observer)
+    {
+        _observers.Remove(observer);
+    }
 
     public Game(int boardSize)
     {
         _boardSize = boardSize;
         Id = Guid.NewGuid().ToString("N");
-        Phase = GamePhase.WaitingForPlayers;
     }
 
     public string Id { get; }
-    public GamePhase Phase { get; private set; }
     public string? CurrentTurnPlayerId { get; private set; }
 
     public IReadOnlyCollection<GamePlayer> Players => _players.Values;
@@ -45,7 +78,6 @@ public sealed class Game
         var player = new GamePlayer(playerId, connectionId, name, new Board(_boardSize));
         _players.Add(playerId, player);
         _playersByConnection.Add(connectionId, player);
-     
 
         if (_players.Count == 2)
         {
@@ -80,6 +112,7 @@ public sealed class Game
         {
             _playersByConnection.Remove(connectionId);
             _players.Remove(player.PlayerId);
+
             if (_players.Count < 2 && Phase != GamePhase.Completed)
             {
                 Phase = GamePhase.WaitingForPlayers;
@@ -109,7 +142,7 @@ public sealed class Game
             StartGame();
             return;
         }
-        
+
 
     }
 
@@ -134,12 +167,21 @@ public sealed class Game
             Phase = GamePhase.Completed;
             CurrentTurnPlayerId = shooter.PlayerId;
         }
+        else if (resolution.Outcome.Equals(ShotOutcome.Hit) || 
+                resolution.Outcome.Equals(ShotOutcome.Sunk))
+        {
+            CurrentTurnPlayerId = shooter.PlayerId;
+        }
         else
         {
             CurrentTurnPlayerId = target.PlayerId;
         }
+        var result = new FireResult(shooter.PlayerId, target.PlayerId, coordinate, resolution, isVictory, CurrentTurnPlayerId);
 
-        return new FireResult(shooter.PlayerId, target.PlayerId, coordinate, resolution, isVictory, CurrentTurnPlayerId);
+        NotifyTurnChanged(shooter.PlayerId, CurrentTurnPlayerId);
+
+        return result;
+
     }
 
     private void StartGame()
@@ -147,8 +189,12 @@ public sealed class Game
         Phase = GamePhase.InProgress;
         var random = new Random();
         var players = Players.ToList();
+
+        var oldTurnPlayerId = CurrentTurnPlayerId;
         CurrentTurnPlayerId = players[random.Next(players.Count)].PlayerId;
-        
+
+        NotifyTurnChanged(oldTurnPlayerId, CurrentTurnPlayerId);
+
     }
 
     private void ValidatePlacements(IReadOnlyCollection<ShipPlacement> placements)
@@ -202,6 +248,22 @@ public sealed class Game
             yield return coordinate;
         }
     }
+
+    private void NotifyPhaseChanged(GamePhase oldPhase, GamePhase newPhase)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnPhaseChanged(this, oldPhase, newPhase);
+        }
+    }
+
+    private void NotifyTurnChanged(string? oldPlayerId, string? newPlayerId)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnTurnChanged(this, oldPlayerId, newPlayerId);
+        }
+    }
 }
 
 public sealed record FireResult(
@@ -231,3 +293,4 @@ public class GamePlayer
 
     public void SetReady() => IsReady = true;
 }
+

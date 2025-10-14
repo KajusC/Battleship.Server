@@ -10,13 +10,13 @@ public class GameBotService : BackgroundService
 {
     private readonly BotCommandQueue _botQueue;
     private HubConnection? _connection;
-    private NPC theBrainz;
-    private GameService _gameservice;
-    private string _botConnectionId;
-    public GameBotService(BotCommandQueue botQueue)
+    private NPC theBrainz = null!;
+    private readonly GameService _gameService;
+    private string _botConnectionId = string.Empty;
+    public GameBotService(BotCommandQueue botQueue, GameService gameService)
     {
-        _gameservice = GameService.GetInstance();
         _botQueue = botQueue;
+        _gameService = gameService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -24,7 +24,12 @@ public class GameBotService : BackgroundService
         await foreach (var gameId in _botQueue.ReadAllAsync(stoppingToken))
         {
             //Console.WriteLine($"[BOT] Joining singleplayer game {gameId}");
-            Game game = _gameservice.GetGameByConnection(gameId);
+            var game = _gameService.GetGameById(gameId);
+            if (game is null)
+            {
+                continue;
+            }
+
             theBrainz = new NPC(game);
             _connection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5260/gamehub")
