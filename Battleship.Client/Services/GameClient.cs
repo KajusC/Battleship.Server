@@ -39,9 +39,14 @@ public sealed class GameClient : IAsyncDisposable
 
     public Task ConnectAsync() => _connection.StartAsync();
 
-    public async Task<JoinGameResponseMessage> JoinGameAsync(string playerName,bool IsSinglePlayer)
+    public async Task<JoinGameResponseMessage> JoinGameAsync(string playerName, bool IsSinglePlayer)
     {
-        var response = await _connection.InvokeAsync<JoinGameResponseMessage>("JoinGame", playerName, IsSinglePlayer);
+        return await JoinGameAsync(playerName, IsSinglePlayer, "standard");
+    }
+
+    public async Task<JoinGameResponseMessage> JoinGameAsync(string playerName, bool IsSinglePlayer, string gameMode)
+    {
+        var response = await _connection.InvokeAsync<JoinGameResponseMessage>("JoinGame", playerName, IsSinglePlayer, gameMode);
         PlayerId = response.PlayerId;
         GameId = response.GameId;
         BoardSize = response.BoardSize;

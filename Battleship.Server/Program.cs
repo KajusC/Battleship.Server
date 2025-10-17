@@ -1,5 +1,6 @@
 using Battleship.Server.Models;
 using Battleship.Server.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Battleship.Server
 {
@@ -12,9 +13,10 @@ namespace Battleship.Server
             builder.Services.AddSignalR();
             builder.Services.AddSingleton<BotCommandQueue>();
             builder.Services.AddSingleton<IGameObserver, GameHubObserver>();
-            builder.Services.AddSingleton<GameService>();
             builder.Services.AddHostedService<GameBotService>();
             var app = builder.Build();
+
+            GameService.RegisterObservers(app.Services.GetServices<IGameObserver>());
 
             if (!app.Environment.IsDevelopment())
             {
