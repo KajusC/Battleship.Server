@@ -25,6 +25,9 @@ public sealed class GameForm : Form
     private BoardState _playerBoardState = new(10);
     private BoardState _opponentBoardState = new(10);
 
+    //Music
+    private IMusic? _currentMusic;
+
     private readonly List<ShipDefinition> _fleet = new();
     private readonly List<ShipPlacement> _placements = new();
     private ShipDefinition? _currentShip;
@@ -51,6 +54,7 @@ public sealed class GameForm : Form
         DoubleBuffered = true;
         KeyPreview = true;
 
+        PlayMusic(MusicType.Menu);
         _playerBoardControl = new BoardControl
         {
             Location = new Point(40, 140),
@@ -108,6 +112,13 @@ public sealed class GameForm : Form
         FormClosing += async (_, _) => await _client.DisposeAsync();
 
         KeyDown += GameForm_KeyDown;
+    }
+
+    private void PlayMusic(MusicType type)
+    {
+        _currentMusic?.Stop();
+        _currentMusic = MusicFactory.CreateMusic(type);
+        _currentMusic.Play();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -231,6 +242,7 @@ public sealed class GameForm : Form
             _stage = GameStage.Completed;
             var isWinner = string.Equals(message.WinnerPlayerId, _client.PlayerId, StringComparison.Ordinal);
             AddLog(isWinner ? "You won the battle!" : $"{message.WinnerName} won the battle.");
+            PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
             MessageBox.Show(isWinner ? "Victory!" : "Defeat...", "Game finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Invalidate();
         });

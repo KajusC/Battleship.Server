@@ -14,4 +14,16 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="9.0.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Audio\defeat.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Audio\menu.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Audio\victory.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
