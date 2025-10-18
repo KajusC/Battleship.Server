@@ -11,20 +11,27 @@ public enum ShipOrientation
     Vertical
 }
 
+public enum ShipType
+{
+    Carrier,
+    Battleship,
+    Cruiser,
+    Submarine,
+    Destroyer
+}
+
 public sealed class Ship
 {
-
-
     private readonly HashSet<Coordinate> _positions;
     private readonly HashSet<Coordinate> _hits = new();
 
-    public Ship(string name, IEnumerable<Coordinate> positions)
+    public Ship(ShipType type, IEnumerable<Coordinate> positions)
     {
-        Name = name;
+        Type = type;
         _positions = positions.ToHashSet();
     }
 
-    public string Name { get; }
+    public ShipType Type { get; }
 
     public IReadOnlyCollection<Coordinate> Positions => _positions;
 
@@ -43,13 +50,13 @@ public sealed class Ship
 
 public static class ShipSpecification
 {
-    public static IReadOnlyDictionary<string, int> StandardFleet { get; } = new Dictionary<string, int>
+    public static IReadOnlyDictionary<ShipType, int> StandardFleet { get; } = new Dictionary<ShipType, int>
     {
-        ["Carrier"] = 5,
-        ["Battleship"] = 4,
-        ["Cruiser"] = 3,
-        ["Submarine"] = 3,
-        ["Destroyer"] = 2
+        [ShipType.Carrier] = 5,
+        [ShipType.Battleship] = 4,
+        [ShipType.Cruiser] = 3,
+        [ShipType.Submarine] = 3,
+        [ShipType.Destroyer] = 2
     };
 
     public static IReadOnlyDictionary<string, int> AdvancedFleet { get; } = new Dictionary<string, int>
@@ -66,14 +73,14 @@ public static class ShipSpecification
 public sealed class ShipPlacement
 
 {
-    public ShipPlacement(string name, Coordinate start, ShipOrientation orientation)
+    public ShipPlacement(ShipType shipType, Coordinate start, ShipOrientation orientation)
     {
-        Name = name;
+        ShipType = shipType;
         Start = start;
         Orientation = orientation;
     }
 
-    public string Name { get; }
+    public ShipType ShipType { get; }
     public Coordinate Start { get; }
     public ShipOrientation Orientation { get; }
 }

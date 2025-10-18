@@ -8,46 +8,76 @@ namespace Battleship.Server.Services;
 
 public sealed class GameService
 {
-    private static GameService? _instance;
-    private static readonly object _lock = new();
+    private static readonly Lazy<GameService> _instance = new(() => new GameService());
+    private readonly object _syncRoot = new();
     private readonly Dictionary<string, Game> _games = new();
     private readonly Dictionary<string, Game> _gamesByConnection = new();
     private Game? _waitingGame;
-    private readonly int _boardSize;
+    private readonly List<IGameObserver> _observers = new();
 
-    public GameService(int boardSize = 10)
+    private GameService()
     {
-        _boardSize = boardSize;
     }
 
-    public static GameService GetInstance(int boardSize = 10)
+    public static GameService Instance => _instance.Value;
+
+    public static void RegisterObservers(IEnumerable<IGameObserver> observers)
     {
-        if (_instance == null)
+        if (observers is null)
         {
-            lock (_lock)
-            {
-                if (_instance == null)
-                {
-                    _instance = new GameService(boardSize);
-                }
-            }
+            return;
         }
-        return _instance;
+
+        foreach (var observer in observers)
+        {
+            Instance.RegisterObserver(observer);
+        }
     }
 
+    public void RegisterObserver(IGameObserver observer)
+    {
+        lock (_syncRoot)
+        {
+            if (_observers.Contains(observer))
+            {
+                return;
+            }
+
+            _observers.Add(observer);
+            foreach (var game in _games.Values)
+            {
+                game.Subscribe(observer);
+            }
+
+            _waitingGame?.Subscribe(observer);
+        }
+    }
+
+    /// <summary>
+    /// Joins a player to a game. Creates a new game using the standard configuration if needed.
+    /// </summary>
     public JoinGameResult JoinGame(string connectionId, string playerName)
+    {
+        return JoinGame(connectionId, playerName, GameMode.standard);
+    }
+
+    /// <summary>
+    /// Joins a player to a game with a specific game mode.
+    /// Uses the Prototype pattern to clone the appropriate game configuration.
+    /// </summary>
+    public JoinGameResult JoinGame(string connectionId, string playerName, GameMode gameMode)
     {
         if (string.IsNullOrWhiteSpace(playerName))
         {
             throw new ArgumentException("Player name is required", nameof(playerName));
         }
 
-        lock (_lock)
+        lock (_syncRoot)
         {
             Game game;
             if (_waitingGame is null || _waitingGame.Players.Count >= 2)
-            {                
-                _waitingGame = new Game(_boardSize);
+            {
+                _waitingGame = CreateGame(gameMode);
             }
 
             game = _waitingGame;
@@ -66,16 +96,30 @@ public sealed class GameService
 
     public Game? GetGameByConnection(string connectionId)
     {
-        lock (_lock)
+        lock (_syncRoot)
         {
             _gamesByConnection.TryGetValue(connectionId, out var game);
             return game;
         }
     }
 
+    public Game? GetGameById(string gameId)
+    {
+        if (string.IsNullOrWhiteSpace(gameId))
+        {
+            return null;
+        }
+
+        lock (_syncRoot)
+        {
+            _games.TryGetValue(gameId, out var game);
+            return game;
+        }
+    }
+
     public GamePlayer? GetPlayerByConnection(string connectionId)
     {
-        lock (_lock)
+        lock (_syncRoot)
         {
             if (_gamesByConnection.TryGetValue(connectionId, out var game))
             {
@@ -87,7 +131,7 @@ public sealed class GameService
 
     public void ApplyPlacements(string connectionId, IEnumerable<ShipPlacement> placements)
     {
-        lock (_lock)
+        lock (_syncRoot)
         {
             var game = GetGameOrThrow(connectionId);
             var player = game.FindPlayerByConnection(connectionId) ?? throw new InvalidOperationException("Player not found in game.");
@@ -97,7 +141,7 @@ public sealed class GameService
 
     public FireResult Fire(string connectionId, Coordinate coordinate)
     {
-        lock (_lock)
+        lock (_syncRoot)
         {
             var game = GetGameOrThrow(connectionId);
             var shooter = game.FindPlayerByConnection(connectionId) ?? throw new InvalidOperationException("Player not found in game.");
@@ -105,14 +149,14 @@ public sealed class GameService
         }
     }
 
-    public IReadOnlyDictionary<string, int> GetFleetDefinition()
+    public IReadOnlyDictionary<ShipType, int> GetFleetDefinition()
     {
         return ShipSpecification.StandardFleet;
     }
 
     public Game? RemovePlayer(string connectionId)
     {
-        lock (_lock)
+        lock (_syncRoot)
         {
             if (!_gamesByConnection.TryGetValue(connectionId, out var game))
             {
@@ -141,6 +185,22 @@ public sealed class GameService
             throw new InvalidOperationException("Player is not part of any game.");
         }
 
+        return game;
+    }
+
+    private void AttachObservers(Game game)
+    {
+        foreach (var observer in _observers)
+        {
+            game.Subscribe(observer);
+        }
+    }
+
+    private Game CreateGame(GameMode gameMode)
+    {
+        var template = GameConfigurationPrototypes.GetByMode(gameMode);
+        var game = new Game(template);
+        AttachObservers(game);
         return game;
     }
 }

@@ -28,6 +28,7 @@ public sealed class GameClient : IAsyncDisposable
     public event Action<OpponentStatusMessage>? OpponentJoined;
     public event Action<OpponentStatusMessage>? OpponentReady;
     public event Action<GameStartMessage>? PlacementPhaseStarted;
+    public event Action<GamePhaseChangedMessage>? GamePhaseChanged;
     public event Action<PlacementResultMessage>? PlacementConfirmed;
     public event Action<GameStartMessage>? GameStarted;
     public event Action<ShotResolutionMessage>? ShotResolved;
@@ -38,9 +39,14 @@ public sealed class GameClient : IAsyncDisposable
 
     public Task ConnectAsync() => _connection.StartAsync();
 
-    public async Task<JoinGameResponseMessage> JoinGameAsync(string playerName,bool IsSinglePlayer)
+    public async Task<JoinGameResponseMessage> JoinGameAsync(string playerName, bool IsSinglePlayer)
     {
-        var response = await _connection.InvokeAsync<JoinGameResponseMessage>("JoinGame", playerName, IsSinglePlayer);
+        return await JoinGameAsync(playerName, IsSinglePlayer, "standard");
+    }
+
+    public async Task<JoinGameResponseMessage> JoinGameAsync(string playerName, bool IsSinglePlayer, string gameMode)
+    {
+        var response = await _connection.InvokeAsync<JoinGameResponseMessage>("JoinGame", playerName, IsSinglePlayer, gameMode);
         PlayerId = response.PlayerId;
         GameId = response.GameId;
         BoardSize = response.BoardSize;
@@ -76,6 +82,7 @@ public sealed class GameClient : IAsyncDisposable
         _connection.On<OpponentStatusMessage>("OpponentJoined", message => OpponentJoined?.Invoke(message));
         _connection.On<OpponentStatusMessage>("OpponentReady", message => OpponentReady?.Invoke(message));
         _connection.On<GameStartMessage>("PlacementPhaseStarted", message => PlacementPhaseStarted?.Invoke(message));
+        _connection.On<GamePhaseChangedMessage>("GamePhaseChanged", message => GamePhaseChanged?.Invoke(message));
         _connection.On<PlacementResultMessage>("PlacementConfirmed", message => PlacementConfirmed?.Invoke(message));
         _connection.On<GameStartMessage>("GameStarted", message => GameStarted?.Invoke(message));
         _connection.On<ShotResolutionMessage>("ShotResolved", message => ShotResolved?.Invoke(message));

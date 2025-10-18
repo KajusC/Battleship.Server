@@ -30,6 +30,7 @@ public sealed class GameForm : Form
 
 
     private string serverIp;
+    private string _gameMode;
 
     private BoardState _playerBoardState = new(10);
     private BoardState _opponentBoardState = new(10);
@@ -51,15 +52,18 @@ public sealed class GameForm : Form
 
     private GameStage _stage = GameStage.Connecting;
 
-    public GameForm(string serverIp, string playerName, bool isSinglePlayer)
+    public GameForm(string serverIp, string playerName, bool isSinglePlayer, string gameMode = "standard")
     {
         this.serverIp = serverIp;
         this._playerName = playerName;
         this.isSinglePlayer = isSinglePlayer;
-        Text = "Battleship Multiplayer";
-        if (isSinglePlayer) Text = "Battleship Singleplayer";
+        this._gameMode = gameMode;
+        
+        Text = isSinglePlayer ? $"Battleship Singleplayer - {gameMode}" : $"Battleship Multiplayer - {gameMode}";
         BackColor = Color.FromArgb(35, 40, 55);
         ForeColor = Color.WhiteSmoke;
+        
+        // Start with standard size, will be adjusted when board size is received
         ClientSize = new Size(1100, 680);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
@@ -203,9 +207,9 @@ public sealed class GameForm : Form
         try
         {
             await _client.ConnectAsync();
-            AddLog("Connected. Joining game lobby...");
+            AddLog($"Connected. Joining game lobby (Mode: {_gameMode})...");
 
-            var joinResponse = await _client.JoinGameAsync(_playerName, isSinglePlayer);
+            var joinResponse = await _client.JoinGameAsync(_playerName, isSinglePlayer, _gameMode);
             ConfigureBoardSizes(joinResponse.BoardSize);
             AddLog(joinResponse.Message);
 
@@ -236,6 +240,12 @@ public sealed class GameForm : Form
         {
             _stage = GameStage.WaitingForOpponent;
             AddLog(message.Message);
+            Invalidate();
+        });
+
+        _client.GamePhaseChanged += message => SafeInvoke(() =>
+        {
+            _stage = MapPhaseToStage(message.NewPhase);
             Invalidate();
         });
 
@@ -487,6 +497,18 @@ public sealed class GameForm : Form
         }
     }
 
+    private static GameStage MapPhaseToStage(string phase)
+    {
+        return phase switch
+        {
+            "WaitingForPlayers" => GameStage.WaitingForOpponent,
+            "Placement" => GameStage.Placement,
+            "InProgress" => GameStage.InProgress,
+            "Completed" => GameStage.Completed,
+            _ => GameStage.Connecting
+        };
+    }
+
     private bool CanPlaceShip(int row, int column, int length, ShipOrientation orientation)
     {
         if (orientation == ShipOrientation.Horizontal)
@@ -693,8 +715,60 @@ public sealed class GameForm : Form
         _opponentBoardState.Clear(CellState.Unknown);
         _playerBoardControl.Board = _playerBoardState;
         _opponentBoardControl.Board = _opponentBoardState;
+        
+        // Dynamically adjust window size based on board size
+        AdjustWindowSizeForBoard(size);
+        
         _playerBoardControl.Invalidate();
         _opponentBoardControl.Invalidate();
+    }
+
+    private void AdjustWindowSizeForBoard(int boardSize)
+    {
+        // Calculate board control size
+        const int marginSize = 40;
+        const int cellSize = 32;
+        int boardControlSize = marginSize * 2 + cellSize * boardSize;
+        
+        // Update board control sizes
+        _playerBoardControl.Size = new Size(boardControlSize, boardControlSize);
+        _opponentBoardControl.Size = new Size(boardControlSize, boardControlSize);
+        
+        // Calculate spacing
+        const int leftMargin = 40;
+        const int topMargin = 140;
+        const int boardSpacing = 20; // Space between boards
+        const int rightPanelWidth = 250; // Ship queue and buttons
+        const int rightPanelMargin = 20;
+        const int logHeight = 210;
+        const int bottomMargin = 40;
+        
+        // Position opponent board to the right of player board
+        _opponentBoardControl.Location = new Point(
+            leftMargin + boardControlSize + boardSpacing,
+            topMargin
+        );
+        
+        // Position right panel (ship queue, buttons)
+        int rightPanelX = leftMargin + (boardControlSize * 2) + boardSpacing + rightPanelMargin;
+        _shipQueueControl.Location = new Point(rightPanelX, topMargin);
+        _rotateButton.Location = new Point(rightPanelX, topMargin + 260);
+        _resetButton.Location = new Point(rightPanelX, topMargin + 310);
+        
+        // Position log control below boards
+        int logY = topMargin + boardControlSize + 20;
+        int logWidth = leftMargin + (boardControlSize * 2) + boardSpacing - leftMargin;
+        _logControl.Location = new Point(leftMargin, logY);
+        _logControl.Size = new Size(logWidth, logHeight);
+        
+        // Calculate total window size
+        int windowWidth = rightPanelX + rightPanelWidth + rightPanelMargin;
+        int windowHeight = logY + logHeight + bottomMargin;
+        
+        // Apply new window size
+        ClientSize = new Size(windowWidth, windowHeight);
+        
+        AddLog($"Window adjusted for {boardSize}×{boardSize} board");
     }
 
     private void AddLog(string message)
