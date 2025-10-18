@@ -28,12 +28,17 @@ public sealed class ShipQueueControl : Control
         _placedShips.Clear();
         Invalidate();
     }
-
+    public void Clear()
+    {
+        _placedShips.Clear();
+        Invalidate();
+    }
     public void MarkPlaced(string shipName)
     {
         _placedShips.Add(shipName);
         Invalidate();
     }
+
 
     public void SetCurrentShip(string? shipName)
     {
@@ -62,13 +67,11 @@ public sealed class ShipQueueControl : Control
             using var borderPen = new Pen(Color.FromArgb(160, 160, 160));
             g.FillRectangle(background, rect);
             g.DrawRectangle(borderPen, rect);
-
             var text = $"{ship.Name} ({ship.Length})";
             TextRenderer.DrawText(g, text, Font, new Point(rect.X + 8, rect.Y + 8), ForeColor);
 
             y += rect.Height + 6;
         }
-
         if (_fleet.Count == 0)
         {
             TextRenderer.DrawText(g, "No fleet information", Font, new Point(10, 10), ForeColor);

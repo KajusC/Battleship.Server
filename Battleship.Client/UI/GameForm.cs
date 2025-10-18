@@ -1,13 +1,15 @@
+using Battleship.Client.Models;
+using Battleship.Client.Models.Command;
+using Battleship.Client.Networking;
+using Battleship.Client.Services;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Drawing;
 using System.Linq;
 using System.Media;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Battleship.Client.Models;
-using Battleship.Client.Networking;
-using Battleship.Client.Services;
 
 namespace Battleship.Client.UI;
 
@@ -20,6 +22,13 @@ public sealed class GameForm : Form
     private readonly ShipQueueControl _shipQueueControl;
     private readonly ActionButton _rotateButton;
     private readonly ActionButton _resetButton;
+    private readonly ActionButton _placeButton;
+    private readonly ActionButton _rotateOneButton;
+    private readonly ActionButton _moveButton;
+    private readonly ActionButton _backButton;
+    private readonly ActionButton _submitPlacementsButton;
+
+
     private string serverIp;
 
     private BoardState _playerBoardState = new(10);
@@ -27,6 +36,12 @@ public sealed class GameForm : Form
 
     private readonly List<ShipDefinition> _fleet = new();
     private readonly List<ShipPlacement> _placements = new();
+    private PlacementController placementsController = new();
+    private ShipPlacement? tempPl= null;
+    private string commandType = "Place";
+    private ShipPlacements placemenetsReceiver;
+
+
     private ShipDefinition? _currentShip;
     private ShipOrientation _currentOrientation = ShipOrientation.Horizontal;
     private bool _isMyTurn;
@@ -36,7 +51,7 @@ public sealed class GameForm : Form
 
     private GameStage _stage = GameStage.Connecting;
 
-    public GameForm(string serverIp, string playerName,bool isSinglePlayer)
+    public GameForm(string serverIp, string playerName, bool isSinglePlayer)
     {
         this.serverIp = serverIp;
         this._playerName = playerName;
@@ -50,6 +65,9 @@ public sealed class GameForm : Form
         MaximizeBox = false;
         DoubleBuffered = true;
         KeyPreview = true;
+
+        placemenetsReceiver = new(_placements);
+
 
         _playerBoardControl = new BoardControl
         {
@@ -91,6 +109,40 @@ public sealed class GameForm : Form
         };
         _resetButton.Click += (_, _) => ResetPlacements();
 
+        _placeButton = new ActionButton
+        {
+            Text = "C:Place",
+            Location = new Point(1000, 410)
+        };
+        _placeButton.Click += (_, _) => Place();
+
+        _rotateOneButton = new ActionButton
+        {
+            Text = "C:Rotate",
+            Location = new Point(1000, 460)
+        };
+        _rotateOneButton.Click += (_, _) => Rotate();
+
+        _moveButton = new ActionButton
+        {
+            Text = "C:move",
+            Location = new Point(1000, 510)
+        };
+        _moveButton.Click += (_, _) => Move();
+        _backButton = new ActionButton
+        {
+            Text = "C:Back",
+            Location = new Point(1000, 560)
+        };
+        _backButton.Click += (_, _) => UndoCommand();
+        _submitPlacementsButton = new ActionButton
+        {
+            Text = "C:Submit",
+            Location = new Point(830, 560)
+        };
+        _submitPlacementsButton.Click += (_, _) => SubmitPlacements();
+
+
         Controls.AddRange(new Control[]
         {
             _playerBoardControl,
@@ -98,7 +150,13 @@ public sealed class GameForm : Form
             _logControl,
             _shipQueueControl,
             _rotateButton,
-            _resetButton
+            _resetButton,
+            _rotateButton,
+            _placeButton,
+            _rotateOneButton,
+            _moveButton,
+            _backButton,
+            _submitPlacementsButton
         });
 
         _client = new GameClient($"{serverIp}/gamehub");
@@ -147,7 +205,7 @@ public sealed class GameForm : Form
             await _client.ConnectAsync();
             AddLog("Connected. Joining game lobby...");
 
-            var joinResponse = await _client.JoinGameAsync(_playerName,isSinglePlayer);
+            var joinResponse = await _client.JoinGameAsync(_playerName, isSinglePlayer);
             ConfigureBoardSizes(joinResponse.BoardSize);
             AddLog(joinResponse.Message);
 
@@ -280,27 +338,93 @@ public sealed class GameForm : Form
             return;
         }
 
-        if (_stage != GameStage.Placement || _currentShip is null)
+        if (_stage != GameStage.Placement)
         {
             return;
         }
+        switch (commandType) {
+            case "Place":
+                if (_currentShip is null)
+                {
+                    AddLog($"All fleet is in place.");
+                    return;
+                }
+                if (!CanPlaceShip(e.Row, e.Column, _currentShip.Length, _currentOrientation))
+                {
+                    SystemSounds.Beep.Play();
+                    AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    return;
+                }
+                ShipPlacement placement = new ShipPlacement(_currentShip.Name, e.Row, e.Column, _currentOrientation);
+                placementsController.add(new PlaceCommand(placemenetsReceiver, placement));
+                break;
+            case "Move":
+                if (tempPl == null)
+                {
+                    foreach (var p in _placements) if (p.Column == e.Column && p.Row == e.Row) tempPl = p;
+                    if (tempPl == null) break;
+                    AddLog($"Selected place {tempPl.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                }
+                else
+                {
+                    var results1 = _fleet.First(a => a.Name == tempPl.Name);
+                    if (!CanPlaceShip(e.Row, e.Column, results1.Length, _currentOrientation))
+                    {
+                        SystemSounds.Beep.Play();
+                        AddLog($"Cannot move {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                        return;
+                    }
+                    AddLog($"New place {tempPl.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    ShipPlacement pp = new ShipPlacement(tempPl.Name, e.Row, e.Column, tempPl.Orientation);
+                    placementsController.add(new MoveCommand(placemenetsReceiver, tempPl, pp));
+                    tempPl= null;
+                }
+                break;
+            case "Rotate":
+                ShipPlacement? pl = null;
+                int ind = -1;
+                for(int i = 0; i < _placements.Count;i++)
+                {
+                    var p = _placements[i];
+                    if (p.Column == e.Column && p.Row == e.Row) ind=i;
+                }
+                if (ind == -1) break;
+                _playerBoardState[e.Row, e.Column] = CellState.Unknown;
+                var results2 = _fleet.First(a => a.Name == _placements[ind].Name);
+                
+                if (!CanPlaceShip(e.Row, e.Column, results2.Length, (_placements[ind].Orientation==ShipOrientation.Horizontal?ShipOrientation.Vertical:ShipOrientation.Horizontal)))
+                {
+                    SystemSounds.Beep.Play();
+                    AddLog($"Cannot rotate {_placements[ind].Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    _playerBoardState[e.Row, e.Column] = CellState.Ship;
+                    return;
+                }
+                placementsController.add(new RotateCommand(placemenetsReceiver, _placements[ind]));
+                break;
 
-        if (!CanPlaceShip(e.Row, e.Column, _currentShip.Length, _currentOrientation))
-        {
-            SystemSounds.Beep.Play();
-            AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}." );
-            return;
+
         }
-
-        PlaceShip(e.Row, e.Column, _currentShip);
-        _shipQueueControl.MarkPlaced(_currentShip.Name);
+        //_shipQueueControl.MarkPlaced(_currentShip.Name);
+            
+        UpdateShipPlacements();
         AdvancePlacementQueue();
 
+        //if (_currentShip is null)
+        //{
+        //    _ = SubmitPlacementsAsync();
+        //}
+    }
+    private void SubmitPlacements()
+    {
         if (_currentShip is null)
         {
             _ = SubmitPlacementsAsync();
         }
+        else {
+            AddLog($"Please place all the ships.");
+        }
     }
+
 
     private void OpponentBoardOnCellClicked(object? sender, BoardCellEventArgs e)
     {
@@ -392,19 +516,42 @@ public sealed class GameForm : Form
 
         return true;
     }
-
-    private void PlaceShip(int row, int column, ShipDefinition ship)
+    private void UpdateShipPlacements()
     {
+        _playerBoardState.Clear(CellState.Unknown);
+        _shipQueueControl.Clear();
+        foreach (var p in _placements)
+        {
+            ShipDefinition sDef = null;
+            foreach(var f in _fleet)
+            {
+                if (f.Name == p.Name) sDef = f;
+            }
+            if (sDef == null) continue;
+            for (var i = 0; i < sDef.Length; i++)
+            {
+                var r = p.Orientation == ShipOrientation.Horizontal ? p.Row : p.Row + i;
+                var c = p.Orientation == ShipOrientation.Horizontal ? p.Column + i : p.Column;
+                _playerBoardState[r, c] = CellState.Ship;
+            }
+            _shipQueueControl.MarkPlaced(p.Name);
+        }
+        _playerBoardControl.Invalidate();
+    }
+    public void PlaceShip(int row, int column, ShipDefinition ship,CellState cell = CellState.Ship)
+    {
+        
         for (var i = 0; i < ship.Length; i++)
         {
             var r = _currentOrientation == ShipOrientation.Horizontal ? row : row + i;
             var c = _currentOrientation == ShipOrientation.Horizontal ? column + i : column;
-            _playerBoardState[r, c] = CellState.Ship;
+            _playerBoardState[r, c] = cell;
         }
 
-        _placements.Add(new ShipPlacement(ship.Name, row, column, _currentOrientation));
+        //_placements.Add(new ShipPlacement(ship.Name, row, column, _currentOrientation));
         _playerBoardControl.Invalidate();
     }
+
 
     private void ApplyShot(ShotResolutionMessage message)
     {
@@ -513,7 +660,31 @@ public sealed class GameForm : Form
             : ShipOrientation.Horizontal;
         AddLog($"Orientation set to {_currentOrientation}.");
     }
+    private void Place()
+    {
+        commandType = "Place";
+        AddLog($"Command: Place placement.");
+    }
+    private void Rotate()
+    {
+        commandType = "Rotate";
+        AddLog($"Command: Rotate.");
+    }
+    private void Move()
+    {
+        commandType = "Move";
+        tempPl = null;
+        AddLog($"Command: Move.");
+    }
+    private void UndoCommand()
+    {
+        placementsController.undo();
 
+        AddLog($"Undo command.");
+        UpdateShipPlacements();
+        AdvancePlacementQueue();
+
+    }
     private void ConfigureBoardSizes(int size)
     {
         _playerBoardState = new BoardState(size);
@@ -541,6 +712,11 @@ public sealed class GameForm : Form
         {
             action();
         }
+    }
+
+    private void InitializeComponent()
+    {
+
     }
 
     private void GameForm_KeyDown(object? sender, KeyEventArgs e)
