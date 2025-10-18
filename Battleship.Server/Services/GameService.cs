@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Battleship.Server.Models;
+using Battleship.Server.Models.Builder;
 
 namespace Battleship.Server.Services;
 
@@ -45,7 +46,7 @@ public sealed class GameService
         {
             Game game;
             if (_waitingGame is null || _waitingGame.Players.Count >= 2)
-            {
+            {                
                 _waitingGame = new Game(_boardSize);
             }
 
