@@ -11,7 +11,7 @@ using Battleship.Client.Services;
 
 namespace Battleship.Client.UI;
 
-public sealed class GameForm : Form
+public sealed class GameForm : Form, IGameUI
 {
     private readonly GameClient _client;
     private readonly BoardControl _playerBoardControl;
@@ -242,7 +242,7 @@ public sealed class GameForm : Form
             _stage = GameStage.Completed;
             var isWinner = string.Equals(message.WinnerPlayerId, _client.PlayerId, StringComparison.Ordinal);
             AddLog(isWinner ? "You won the battle!" : $"{message.WinnerName} won the battle.");
-            PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
+             PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
             MessageBox.Show(isWinner ? "Victory!" : "Defeat...", "Game finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Invalidate();
         });
@@ -567,5 +567,41 @@ public sealed class GameForm : Form
             ResetPlacements();
             e.Handled = true;
         }
+    }
+
+    //
+    // IGameUI implementation — Bridge Pattern: GameForm now serves as a concrete Abstraction
+    // that delegates rendering and messaging to platform-specific UI controls while the
+    // GameClient/service layer can act as the Implementation side.
+    //
+
+    public void RenderBoard(BoardState playerBoard, BoardState opponentBoard)
+    {
+        // Ensure updates happen on UI thread and wire new board states into controls.
+        SafeInvoke(() =>
+        {
+            _playerBoardState = playerBoard;
+            _opponentBoardState = opponentBoard;
+            _playerBoardControl.Board = _playerBoardState;
+            _opponentBoardControl.Board = _opponentBoardState;
+            _playerBoardControl.Invalidate();
+            _opponentBoardControl.Invalidate();
+            Invalidate();
+        });
+    }
+
+    public void DisplayMessage(string message)
+    {
+        // Use the existing logging path for non-blocking messages.
+        SafeInvoke(() => AddLog(message));
+    }
+
+    public Task HandlePlayerActionAsync()
+    {
+        // Bridge point for higher-level logic to trigger UI-driven player actions.
+        // Currently a no-op because GameForm uses event handlers for clicks/keys.
+        // If you need asynchronous coordination (e.g. waiting for player placement),
+        // implement a TaskCompletionSource flow here and complete it from the event handlers.
+        return Task.CompletedTask;
     }
 }

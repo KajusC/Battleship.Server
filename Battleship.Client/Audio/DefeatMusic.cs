@@ -7,7 +7,7 @@ public class DefeatMusic : IMusic
     public void Play()
     {
         Stop();
-        _player = new SoundPlayer("C:\\Users\\Pelkių vadas\\Desktop\\Studijos\\OPP\\repo\\Battleship.Server\\Battleship.Client\\Audio\\defeat.wav");
+        _player = new SoundPlayer("Audio/defeat.wav");
         _player.PlayLooping();
     }
 
