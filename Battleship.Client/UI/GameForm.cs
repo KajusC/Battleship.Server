@@ -5,13 +5,14 @@ using System.Linq;
 using System.Media;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Battleship.Client.Audio;
 using Battleship.Client.Models;
 using Battleship.Client.Networking;
 using Battleship.Client.Services;
 
 namespace Battleship.Client.UI;
 
-public sealed class GameForm : Form, IGameUI
+public sealed class GameForm : Form
 {
     private readonly GameClient _client;
     private readonly BoardControl _playerBoardControl;

@@ -1,5 +1,8 @@
-public interface IMusic
+namespace Battleship.Client.Audio
 {
-    void Play();
-    void Stop();
+    public interface IMusic
+    {
+        void Play();
+        void Stop();
+    }
 }

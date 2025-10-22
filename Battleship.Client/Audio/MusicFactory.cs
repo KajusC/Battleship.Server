@@ -1,22 +1,30 @@
-public enum MusicType
-{
-    Victory,
-    Game,
-    Menu,
-    Defeat
-}
+using System;
 
-public static class MusicFactory
+namespace Battleship.Client.Audio
 {
-    public static IMusic CreateMusic(MusicType type)
+    public enum MusicType
     {
-        return type switch
+        Victory,
+        Game,
+        Menu,
+        Defeat
+    }
+
+    public static class MusicFactory
+    {
+        // Factory uses SystemAudioPlayer by default.
+        private static readonly IAudioPlayer DefaultPlayer = new SystemAudioPlayer();
+
+        public static IMusic CreateMusic(MusicType type)
         {
-            MusicType.Victory => new VictoryMusic(),
-            MusicType.Game => new GameMusic(),
-            MusicType.Menu => new MenuMusic(),
-            MusicType.Defeat=> new DefeatMusic(),
-            _ => throw new ArgumentException("Unknown music type")
-        };
+            return type switch
+            {
+                MusicType.Victory => new VictoryMusic(DefaultPlayer),
+                MusicType.Game => new GameMusic(DefaultPlayer),
+                MusicType.Menu => new MenuMusic(DefaultPlayer),
+                MusicType.Defeat => new DefeatMusic(DefaultPlayer),
+                _ => throw new ArgumentException("Unknown music type")
+            };
+        }
     }
 }

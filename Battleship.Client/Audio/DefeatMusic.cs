@@ -1,19 +1,11 @@
 ﻿using System.Media;
 
-public class DefeatMusic : IMusic
+namespace Battleship.Client.Audio
 {
-    private SoundPlayer? _player;
-
-    public void Play()
+    public class DefeatMusic : BaseMusic
     {
-        Stop();
-        _player = new SoundPlayer("Audio/defeat.wav");
-        _player.PlayLooping();
-    }
+        public DefeatMusic() : this(new SystemAudioPlayer()) { }
 
-    public void Stop()
-    {
-        _player?.Stop();
-        _player = null;
+        public DefeatMusic(IAudioPlayer player) : base(player, "Audio/defeat.wav") { }
     }
 }

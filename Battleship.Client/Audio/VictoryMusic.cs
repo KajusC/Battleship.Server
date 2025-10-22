@@ -1,19 +1,9 @@
-using System.Media;
-
-public class VictoryMusic : IMusic
+namespace Battleship.Client.Audio
 {
-    private SoundPlayer? _player;
-
-    public void Play()
+    public class VictoryMusic : BaseMusic
     {
-        Stop();
-        _player = new SoundPlayer("Audio/victory.wav");
-        _player.PlayLooping();
-    }
+        public VictoryMusic() : this(new SystemAudioPlayer()) { }
 
-    public void Stop()
-    {
-        _player?.Stop();
-        _player = null;
+        public VictoryMusic(IAudioPlayer player) : base(player, "Audio/victory.wav") { }
     }
 }

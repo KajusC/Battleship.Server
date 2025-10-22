@@ -1,19 +1,11 @@
 using System.Media;
 
-public class MenuMusic : IMusic
+namespace Battleship.Client.Audio
 {
-    private SoundPlayer? _player;
-
-    public void Play()
+    public class MenuMusic : BaseMusic
     {
-        Stop();
-        _player = new SoundPlayer("Audio/menu.wav");
-        _player.PlayLooping();
-    }
+        public MenuMusic() : this(new SystemAudioPlayer()) { }
 
-    public void Stop()
-    {
-        _player?.Stop();
-        _player = null;
+        public MenuMusic(IAudioPlayer player) : base(player, "Audio/menu.wav") { }
     }
 }
