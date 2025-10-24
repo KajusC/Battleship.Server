@@ -32,6 +32,8 @@
             labelServerUrl = new Label();
             labelPlayerName = new Label();
             singleplayerCheck = new CheckBox();
+            comboBoxGameMode = new ComboBox();
+            labelGameMode = new Label();
             SuspendLayout();
             // 
             // buttonConnect
@@ -40,11 +42,11 @@
             buttonConnect.FlatStyle = FlatStyle.Flat;
             buttonConnect.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             buttonConnect.ForeColor = Color.White;
-            buttonConnect.Location = new Point(171, 267);
+            buttonConnect.Location = new Point(171, 370);
             buttonConnect.Margin = new Padding(3, 4, 3, 4);
             buttonConnect.Name = "buttonConnect";
             buttonConnect.Size = new Size(137, 53);
-            buttonConnect.TabIndex = 2;
+            buttonConnect.TabIndex = 3;
             buttonConnect.Text = "Connect";
             buttonConnect.UseVisualStyleBackColor = false;
             buttonConnect.Click += buttonConnect_Click;
@@ -106,12 +108,36 @@
             singleplayerCheck.UseVisualStyleBackColor = false;
             singleplayerCheck.CheckedChanged += singleplayerCheck_CheckedChanged;
             // 
+            // comboBoxGameMode
+            // 
+            comboBoxGameMode.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxGameMode.Font = new Font("Segoe UI", 10F);
+            comboBoxGameMode.Location = new Point(57, 293);
+            comboBoxGameMode.Margin = new Padding(3, 4, 3, 4);
+            comboBoxGameMode.Name = "comboBoxGameMode";
+            comboBoxGameMode.Size = new Size(365, 31);
+            comboBoxGameMode.TabIndex = 2;
+            comboBoxGameMode.SelectedIndexChanged += comboBoxGameMode_SelectedIndexChanged;
+            // 
+            // labelGameMode
+            // 
+            labelGameMode.AutoSize = true;
+            labelGameMode.Font = new Font("Segoe UI", 10F);
+            labelGameMode.ForeColor = Color.White;
+            labelGameMode.Location = new Point(57, 267);
+            labelGameMode.Name = "labelGameMode";
+            labelGameMode.Size = new Size(102, 23);
+            labelGameMode.TabIndex = 6;
+            labelGameMode.Text = "Game Mode:";
+            // 
             // ConnectToServer
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(35, 40, 55);
-            ClientSize = new Size(480, 373);
+            ClientSize = new Size(480, 473);
+            Controls.Add(labelGameMode);
+            Controls.Add(comboBoxGameMode);
             Controls.Add(labelPlayerName);
             Controls.Add(labelServerUrl);
             Controls.Add(textBoxPlayerName);
@@ -135,6 +161,8 @@
         private System.Windows.Forms.Label labelServerUrl;
         private System.Windows.Forms.Label labelPlayerName;
         private System.Windows.Forms.CheckBox singleplayerCheck;
+        private System.Windows.Forms.ComboBox comboBoxGameMode;
+        private System.Windows.Forms.Label labelGameMode;
 
         private async void buttonConnect_Click(object sender, System.EventArgs e)
         {

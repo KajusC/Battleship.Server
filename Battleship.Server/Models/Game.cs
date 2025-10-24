@@ -2,6 +2,7 @@ using Battleship.Server.Classes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static Battleship.Server.Models.Game;
 
 namespace Battleship.Server.Models;
 
@@ -13,24 +14,74 @@ public enum GamePhase
     Completed
 }
 
+public interface IGameObserver
+{
+    void OnPhaseChanged(Game game, GamePhase oldPhase, GamePhase newPhase);
+    void OnTurnChanged(Game game, string? oldPlayerId, string? newPlayerId);
+}
+
 
 public sealed class Game
 {
+    private GamePhase _phase;
+    private readonly List<IGameObserver> _observers = new();
     private readonly Dictionary<string, GamePlayer> _players = new();
     private readonly Dictionary<string, GamePlayer> _playersByConnection = new();
     public readonly int _boardSize;
-    
+    private readonly IGameConfigurationPrototype _configuration;
 
+    public GamePhase Phase
+    {
+        get => _phase;
+        private set
+        {
+            if (_phase != value)
+            {
+                var oldPhase = _phase;
+                _phase = value;
+                NotifyPhaseChanged(oldPhase, value);
+            }
+        }
+    }
+
+    public void Subscribe(IGameObserver observer)
+    {
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+        }
+    }
+
+    public void Unsubscribe(IGameObserver observer)
+    {
+        _observers.Remove(observer);
+    }
+
+    /// <summary>
+    /// Creates a game with a specific board size (legacy constructor).
+    /// Uses standard game configuration.
+    /// </summary>
     public Game(int boardSize)
     {
         _boardSize = boardSize;
+        _configuration = GameConfigurationPrototypes.StandardGame.DeepClone();
         Id = Guid.NewGuid().ToString("N");
-        Phase = GamePhase.WaitingForPlayers;
+    }
+
+    /// <summary>
+    /// Creates a game from a configuration prototype (Prototype Pattern).
+    /// This constructor clones the configuration for this game instance.
+    /// </summary>
+    public Game(IGameConfigurationPrototype configPrototype)
+    {
+        _configuration = configPrototype.DeepClone(); // Clone the prototype
+        _boardSize = _configuration.BoardSize;
+        Id = Guid.NewGuid().ToString("N");
     }
 
     public string Id { get; }
-    public GamePhase Phase { get; private set; }
     public string? CurrentTurnPlayerId { get; private set; }
+    public IGameConfigurationPrototype Configuration => _configuration;
 
     public IReadOnlyCollection<GamePlayer> Players => _players.Values;
 
@@ -45,7 +96,6 @@ public sealed class Game
         var player = new GamePlayer(playerId, connectionId, name, new Board(_boardSize));
         _players.Add(playerId, player);
         _playersByConnection.Add(connectionId, player);
-     
 
         if (_players.Count == 2)
         {
@@ -80,6 +130,7 @@ public sealed class Game
         {
             _playersByConnection.Remove(connectionId);
             _players.Remove(player.PlayerId);
+
             if (_players.Count < 2 && Phase != GamePhase.Completed)
             {
                 Phase = GamePhase.WaitingForPlayers;
@@ -87,7 +138,7 @@ public sealed class Game
         }
     }
 
-    public IReadOnlyDictionary<string, int> FleetDefinition => ShipSpecification.StandardFleet;
+    public IReadOnlyDictionary<ShipType, int> FleetDefinition => _configuration.FleetDefinition;
 
     public void ApplyPlacements(GamePlayer player, IEnumerable<ShipPlacement> placements)
     {
@@ -109,7 +160,7 @@ public sealed class Game
             StartGame();
             return;
         }
-        
+
 
     }
 
@@ -134,12 +185,21 @@ public sealed class Game
             Phase = GamePhase.Completed;
             CurrentTurnPlayerId = shooter.PlayerId;
         }
+        else if (resolution.Outcome.Equals(ShotOutcome.Hit) || 
+                resolution.Outcome.Equals(ShotOutcome.Sunk))
+        {
+            CurrentTurnPlayerId = shooter.PlayerId;
+        }
         else
         {
             CurrentTurnPlayerId = target.PlayerId;
         }
+        var result = new FireResult(shooter.PlayerId, target.PlayerId, coordinate, resolution, isVictory, CurrentTurnPlayerId);
 
-        return new FireResult(shooter.PlayerId, target.PlayerId, coordinate, resolution, isVictory, CurrentTurnPlayerId);
+        NotifyTurnChanged(shooter.PlayerId, CurrentTurnPlayerId);
+
+        return result;
+
     }
 
     private void StartGame()
@@ -147,44 +207,50 @@ public sealed class Game
         Phase = GamePhase.InProgress;
         var random = new Random();
         var players = Players.ToList();
+
+        var oldTurnPlayerId = CurrentTurnPlayerId;
         CurrentTurnPlayerId = players[random.Next(players.Count)].PlayerId;
-        
+
+        NotifyTurnChanged(oldTurnPlayerId, CurrentTurnPlayerId);
+
     }
 
     private void ValidatePlacements(IReadOnlyCollection<ShipPlacement> placements)
     {
-        if (placements.Count != ShipSpecification.StandardFleet.Count)
+        var fleetDef = _configuration.FleetDefinition;
+        
+        if (placements.Count != fleetDef.Count)
         {
-            throw new InvalidOperationException("Invalid number of ships placed.");
+            throw new InvalidOperationException($"Invalid number of ships placed. Expected {fleetDef.Count}, got {placements.Count}.");
         }
 
-        var names = placements.Select(p => p.Name).ToList();
-        if (names.Distinct().Count() != ShipSpecification.StandardFleet.Count)
+        var shipTypes = placements.Select(p => p.ShipType).ToList();
+        if (shipTypes.Distinct().Count() != fleetDef.Count)
         {
-            throw new InvalidOperationException("Ship names must be unique.");
+            throw new InvalidOperationException("Ship types must be unique.");
         }
 
         foreach (var placement in placements)
         {
-            if (!ShipSpecification.StandardFleet.TryGetValue(placement.Name, out var expectedLength))
+            if (!fleetDef.TryGetValue(placement.ShipType, out var expectedLength))
             {
-                throw new InvalidOperationException($"Unknown ship type '{placement.Name}'.");
+                throw new InvalidOperationException($"Unknown ship type '{placement.ShipType}' for game mode '{_configuration.Mode}'.");
             }
 
             var actualLength = expectedLength;
             var coordinates = GenerateCoordinates(placement, actualLength).ToList();
             if (coordinates.Count != expectedLength)
             {
-                throw new InvalidOperationException($"Ship '{placement.Name}' has invalid length.");
+                throw new InvalidOperationException($"Ship '{placement.ShipType}' has invalid length.");
             }
         }
     }
 
     private Ship BuildShip(ShipPlacement placement)
     {
-        var length = ShipSpecification.StandardFleet[placement.Name];
+        var length = _configuration.FleetDefinition[placement.ShipType];
         var coordinates = GenerateCoordinates(placement, length).ToList();
-        return new Ship(placement.Name, coordinates);
+        return new Ship(placement.ShipType, coordinates);
     }
 
     private IEnumerable<Coordinate> GenerateCoordinates(ShipPlacement placement, int length)
@@ -200,6 +266,22 @@ public sealed class Game
             }
 
             yield return coordinate;
+        }
+    }
+
+    private void NotifyPhaseChanged(GamePhase oldPhase, GamePhase newPhase)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnPhaseChanged(this, oldPhase, newPhase);
+        }
+    }
+
+    private void NotifyTurnChanged(string? oldPlayerId, string? newPlayerId)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnTurnChanged(this, oldPlayerId, newPlayerId);
         }
     }
 }
@@ -231,3 +313,4 @@ public class GamePlayer
 
     public void SetReady() => IsReady = true;
 }
+

@@ -28,6 +28,14 @@ public sealed class BoardControl : Control
         set
         {
             _board = value;
+            
+            // Dynamically adjust size based on board
+            if (_board != null)
+            {
+                int requiredSize = MarginSize * 2 + CellSize * _board.Size;
+                Size = new Size(requiredSize, requiredSize);
+            }
+            
             Invalidate();
         }
     }

@@ -17,18 +17,25 @@ public class GameHub : Hub
 
     public GameHub(BotCommandQueue botQueue)
     {
-        _gameService = GameService.GetInstance();
-
         _botQueue = botQueue;
+        _gameService = GameService.Instance;
     }
 
-
-    public async Task<JoinGameResponseDto> JoinGame(string playerName, bool IsSinglePlayer)
+    /// <summary>
+    /// Join a game with a specific game mode.
+    /// Uses Prototype pattern via GameService to create game from configuration template.
+    /// </summary>
+    public async Task<JoinGameResponseDto> JoinGame(string playerName, bool IsSinglePlayer, string? gameMode = "standard")
     {
         try
         {
-            var result = _gameService.JoinGame(Context.ConnectionId, playerName.Trim());
-//          result = _gameService.JoinGame(Context.ConnectionId, playerName.Trim(), IsSinglePlayer);
+            // Parse game mode, default to standard if invalid
+            if (!Enum.TryParse<GameMode>(gameMode, true, out var mode))
+            {
+                mode = GameMode.standard;
+            }
+
+            var result = _gameService.JoinGame(Context.ConnectionId, playerName.Trim(), mode);
 
             await Groups.AddToGroupAsync(Context.ConnectionId, result.Game.Id);
             
@@ -36,22 +43,24 @@ public class GameHub : Hub
             {
                 GameId = result.Game.Id,
                 PlayerId = result.Player.PlayerId,
-                BoardSize = result.Game.Players.First().Board.Size,
+                BoardSize = result.Game.Configuration.BoardSize,
                 IsWaitingForOpponent = result.IsWaitingForOpponent,
                 Message = result.IsWaitingForOpponent
-                    ? "Waiting for an opponent to join."
-                    : "Opponent joined. Prepare to place your fleet."
+                    ? $"Waiting for an opponent to join. Mode: {result.Game.Configuration.Mode}"
+                    : $"Opponent joined. Mode: {result.Game.Configuration.Mode}. Prepare to place your fleet."
             };
+            
             if (IsSinglePlayer)
             { 
                 await _botQueue.EnqueueGameAsync(result.Game.Id);
             }
+            
             if (result.IsWaitingForOpponent)
             {
                 await Clients.Caller.SendAsync("WaitingForOpponent", new WaitingStatusDto
                 {
                     GameId = result.Game.Id,
-                    Message = "Waiting for an opponent to join."
+                    Message = $"Waiting for an opponent to join. Mode: {result.Game.Configuration.Mode}"
                 });
             }
             else
@@ -75,6 +84,15 @@ public class GameHub : Hub
         await NotifyOpponentJoined(result.Game, result.Player);
         await NotifyPlacementPhase(result.Game);
         
+    }
+
+    /// <summary>
+    /// Gets available game modes and their configurations.
+    /// Demonstrates accessing the prototype registry.
+    /// </summary>
+    public Task<IEnumerable<string>> GetAvailableGameModes()
+    {
+        return Task.FromResult(GameConfigurationPrototypes.GetAvailableModes());
     }
 
     public async Task<PlacementResultDto> PlaceShips(List<ShipPlacementDto> placements)
@@ -139,7 +157,7 @@ public class GameHub : Hub
             TargetPlayerId = fireResult.TargetPlayerId,
             Target = new CoordinateDto { Row = fireResult.Coordinate.Row, Column = fireResult.Coordinate.Column },
             Outcome = fireResult.Resolution.Outcome.ToString(),
-            ShipName = fireResult.Resolution.Ship?.Name,
+            ShipName = fireResult.Resolution.Ship?.Type.ToString(),
             Victory = fireResult.IsVictory,
             NextPlayerId = fireResult.NextPlayerId
         };
@@ -198,7 +216,12 @@ public class GameHub : Hub
             throw new InvalidOperationException("Invalid ship orientation.");
         }
 
-        return new ShipPlacement(dto.ShipName, new Coordinate(dto.Row, dto.Column), orientation);
+        if (!Enum.TryParse<ShipType>(dto.ShipName, true, out var shipType))
+        {
+            throw new InvalidOperationException("Invalid ship type.");
+        }
+
+        return new ShipPlacement(shipType, new Coordinate(dto.Row, dto.Column), orientation);
     }
 
     private async Task NotifyOpponentJoined(Game game, GamePlayer joiningPlayer)
@@ -228,7 +251,7 @@ public class GameHub : Hub
     private async Task NotifyPlacementPhase(Game game)
     {
         var fleet = _gameService.GetFleetDefinition()
-            .Select(s => new ShipDefinitionDto { Name = s.Key, Length = s.Value })
+            .Select(s => new ShipDefinitionDto { Name = s.Key.ToString(), Length = s.Value })
             .ToArray();
 
         var dto = new GameStartDto
@@ -244,7 +267,7 @@ public class GameHub : Hub
     private async Task NotifyGameStarted(Game game)
     {
         var fleet = _gameService.GetFleetDefinition()
-            .Select(s => new ShipDefinitionDto { Name = s.Key, Length = s.Value })
+            .Select(s => new ShipDefinitionDto { Name = s.Key.ToString(), Length = s.Value })
             .ToArray();
 
 

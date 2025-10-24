@@ -10,13 +10,13 @@ public class GameBotService : BackgroundService
 {
     private readonly BotCommandQueue _botQueue;
     private HubConnection? _connection;
-    private NPC theBrainz;
-    private GameService _gameservice;
-    private string _botConnectionId;
+    private NPC theBrainz = null!;
+    private readonly GameService _gameService;
+    private string _botConnectionId = string.Empty;
     public GameBotService(BotCommandQueue botQueue)
     {
-        _gameservice = GameService.GetInstance();
         _botQueue = botQueue;
+        _gameService = GameService.Instance;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -24,7 +24,12 @@ public class GameBotService : BackgroundService
         await foreach (var gameId in _botQueue.ReadAllAsync(stoppingToken))
         {
             //Console.WriteLine($"[BOT] Joining singleplayer game {gameId}");
-            Game game = _gameservice.GetGameByConnection(gameId);
+            var game = _gameService.GetGameById(gameId);
+            if (game is null)
+            {
+                continue;
+            }
+
             theBrainz = new NPC(game);
             _connection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5260/gamehub")
@@ -33,7 +38,7 @@ public class GameBotService : BackgroundService
 
             _connection.On<GameStartDto>("PlacementPhaseStarted", async result =>
             {                
-                IReadOnlyDictionary<string, int> FleetDefinition = ShipSpecification.StandardFleet;
+                IReadOnlyDictionary<ShipType, int> FleetDefinition = ShipSpecification.StandardFleet;
                 List<ShipPlacementDto> placements = theBrainz.ShipPlacements(ShipSpecification.StandardFleet, 10, 10);
                 
                 await _connection.InvokeAsync("PlaceShips", placements, cancellationToken: stoppingToken);
