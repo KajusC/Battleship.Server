@@ -11,7 +11,8 @@ namespace Battleship.Server.Models
     }
     public interface IGameConfigurationPrototype
     {
-        IGameConfigurationPrototype Clone();
+        IGameConfigurationPrototype DeepClone();
+        IGameConfigurationPrototype ShallowClone();
         int BoardSize { get; set; }
         IReadOnlyDictionary<ShipType, int> FleetDefinition { get; init; }
         int TimeLimit { get; set; }
@@ -27,11 +28,7 @@ namespace Battleship.Server.Models
         public int MaxPlayers { get; set; } = 2;
         public int TimeLimit { get; set; } = 60;
 
-        /// <summary>
-        /// Creates a deep copy of this game configuration (Prototype Pattern).
-        /// Ensures FleetDefinition is properly cloned.
-        /// </summary>
-        public IGameConfigurationPrototype Clone()
+        public IGameConfigurationPrototype DeepClone()
         {
             return new GameConfiguration
             {
@@ -41,6 +38,11 @@ namespace Battleship.Server.Models
                 MaxPlayers = this.MaxPlayers,
                 TimeLimit = this.TimeLimit
             };
+        }
+
+        public IGameConfigurationPrototype ShallowClone()
+        {
+            return (IGameConfigurationPrototype)this.MemberwiseClone();
         }
     }
 
@@ -101,10 +103,6 @@ namespace Battleship.Server.Models
             MaxPlayers = 2
         };
 
-        /// <summary>
-        /// Gets a game configuration prototype by mode.
-        /// Uses the Prototype pattern to return a cloneable template.
-        /// </summary>
         public static IGameConfigurationPrototype GetByMode(GameMode mode)
         {
             return mode switch
@@ -117,9 +115,6 @@ namespace Battleship.Server.Models
             };
         }
 
-        /// <summary>
-        /// Gets a game configuration prototype by string name.
-        /// </summary>
         public static IGameConfigurationPrototype GetByName(string? modeName)
         {
             if (string.IsNullOrWhiteSpace(modeName))
@@ -131,9 +126,6 @@ namespace Battleship.Server.Models
             return StandardGame;
         }
 
-        /// <summary>
-        /// Returns all available game modes.
-        /// </summary>
         public static IEnumerable<string> GetAvailableModes()
         {
             return Enum.GetNames<GameMode>();

@@ -64,7 +64,7 @@ public sealed class Game
     public Game(int boardSize)
     {
         _boardSize = boardSize;
-        _configuration = GameConfigurationPrototypes.StandardGame.Clone();
+        _configuration = GameConfigurationPrototypes.StandardGame.DeepClone();
         Id = Guid.NewGuid().ToString("N");
     }
 
@@ -74,7 +74,7 @@ public sealed class Game
     /// </summary>
     public Game(IGameConfigurationPrototype configPrototype)
     {
-        _configuration = configPrototype.Clone(); // Clone the prototype
+        _configuration = configPrototype.DeepClone(); // Clone the prototype
         _boardSize = _configuration.BoardSize;
         Id = Guid.NewGuid().ToString("N");
     }
