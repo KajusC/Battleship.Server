@@ -7,24 +7,30 @@ namespace Battleship.Server.Services;
 
 public sealed class GameService
 {
+    private static readonly Lazy<GameService> _instance = new(() => new GameService());
     private readonly object _syncRoot = new();
     private readonly Dictionary<string, Game> _games = new();
     private readonly Dictionary<string, Game> _gamesByConnection = new();
     private Game? _waitingGame;
-    private readonly int _boardSize;
     private readonly List<IGameObserver> _observers = new();
 
-    public GameService(IEnumerable<IGameObserver> observers, int boardSize = 10)
+    private GameService()
     {
-        _boardSize = boardSize;
-        foreach (var observer in observers)
-        {
-            RegisterObserver(observer);
-        }
     }
 
-    public GameService(int boardSize = 10) : this(Array.Empty<IGameObserver>(), boardSize)
+    public static GameService Instance => _instance.Value;
+
+    public static void RegisterObservers(IEnumerable<IGameObserver> observers)
     {
+        if (observers is null)
+        {
+            return;
+        }
+
+        foreach (var observer in observers)
+        {
+            Instance.RegisterObserver(observer);
+        }
     }
 
     public void RegisterObserver(IGameObserver observer)
@@ -46,7 +52,19 @@ public sealed class GameService
         }
     }
 
+    /// <summary>
+    /// Joins a player to a game. Creates a new game using the standard configuration if needed.
+    /// </summary>
     public JoinGameResult JoinGame(string connectionId, string playerName)
+    {
+        return JoinGame(connectionId, playerName, GameMode.standard);
+    }
+
+    /// <summary>
+    /// Joins a player to a game with a specific game mode.
+    /// Uses the Prototype pattern to clone the appropriate game configuration.
+    /// </summary>
+    public JoinGameResult JoinGame(string connectionId, string playerName, GameMode gameMode)
     {
         if (string.IsNullOrWhiteSpace(playerName))
         {
@@ -58,8 +76,7 @@ public sealed class GameService
             Game game;
             if (_waitingGame is null || _waitingGame.Players.Count >= 2)
             {
-                _waitingGame = new Game(_boardSize);
-                AttachObservers(_waitingGame);
+                _waitingGame = CreateGame(gameMode);
             }
 
             game = _waitingGame;
@@ -131,7 +148,7 @@ public sealed class GameService
         }
     }
 
-    public IReadOnlyDictionary<string, int> GetFleetDefinition()
+    public IReadOnlyDictionary<ShipType, int> GetFleetDefinition()
     {
         return ShipSpecification.StandardFleet;
     }
@@ -176,6 +193,14 @@ public sealed class GameService
         {
             game.Subscribe(observer);
         }
+    }
+
+    private Game CreateGame(GameMode gameMode)
+    {
+        var template = GameConfigurationPrototypes.GetByMode(gameMode);
+        var game = new Game(template);
+        AttachObservers(game);
+        return game;
     }
 }
 

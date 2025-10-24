@@ -160,18 +160,18 @@ namespace Battleship.Server.Models
             return direction;
         }
 
-        public List<ShipPlacementDto> ShipPlacements(IReadOnlyDictionary<string, int> Fleet, int Rows, int Columns)
+        public List<ShipPlacementDto> ShipPlacements(IReadOnlyDictionary<ShipType, int> Fleet, int Rows, int Columns)
         {
             List<ShipPlacementDto> placements = new List<ShipPlacementDto>();
             //int i = 1;
             Random rand = new Random();
             int gridSize = Rows;
             HashSet<(int, int)> occupied = new();
-            foreach (KeyValuePair<string, int> ship in Fleet)
+            foreach (KeyValuePair<ShipType, int> ship in Fleet)
             {
                 //placements.Add(new ShipPlacementDto { ShipName = ship.Key, Row = i, Column = 1, Orientation = ShipOrientation.Horizontal.ToString() });
                 int length = ship.Value;
-                string name = ship.Key;
+                string name = ship.Key.ToString();
                 bool placed = false;
                 while (!placed)
                 {

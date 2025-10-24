@@ -13,10 +13,10 @@ public class GameBotService : BackgroundService
     private NPC theBrainz = null!;
     private readonly GameService _gameService;
     private string _botConnectionId = string.Empty;
-    public GameBotService(BotCommandQueue botQueue, GameService gameService)
+    public GameBotService(BotCommandQueue botQueue)
     {
         _botQueue = botQueue;
-        _gameService = gameService;
+        _gameService = GameService.Instance;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -38,7 +38,7 @@ public class GameBotService : BackgroundService
 
             _connection.On<GameStartDto>("PlacementPhaseStarted", async result =>
             {                
-                IReadOnlyDictionary<string, int> FleetDefinition = ShipSpecification.StandardFleet;
+                IReadOnlyDictionary<ShipType, int> FleetDefinition = ShipSpecification.StandardFleet;
                 List<ShipPlacementDto> placements = theBrainz.ShipPlacements(ShipSpecification.StandardFleet, 10, 10);
                 
                 await _connection.InvokeAsync("PlaceShips", placements, cancellationToken: stoppingToken);

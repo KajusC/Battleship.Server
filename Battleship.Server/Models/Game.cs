@@ -28,6 +28,7 @@ public sealed class Game
     private readonly Dictionary<string, GamePlayer> _players = new();
     private readonly Dictionary<string, GamePlayer> _playersByConnection = new();
     public readonly int _boardSize;
+    private readonly IGameConfigurationPrototype _configuration;
 
     public GamePhase Phase
     {
@@ -56,14 +57,31 @@ public sealed class Game
         _observers.Remove(observer);
     }
 
+    /// <summary>
+    /// Creates a game with a specific board size (legacy constructor).
+    /// Uses standard game configuration.
+    /// </summary>
     public Game(int boardSize)
     {
         _boardSize = boardSize;
+        _configuration = GameConfigurationPrototypes.StandardGame.DeepClone();
+        Id = Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// Creates a game from a configuration prototype (Prototype Pattern).
+    /// This constructor clones the configuration for this game instance.
+    /// </summary>
+    public Game(IGameConfigurationPrototype configPrototype)
+    {
+        _configuration = configPrototype.DeepClone(); // Clone the prototype
+        _boardSize = _configuration.BoardSize;
         Id = Guid.NewGuid().ToString("N");
     }
 
     public string Id { get; }
     public string? CurrentTurnPlayerId { get; private set; }
+    public IGameConfigurationPrototype Configuration => _configuration;
 
     public IReadOnlyCollection<GamePlayer> Players => _players.Values;
 
@@ -120,7 +138,7 @@ public sealed class Game
         }
     }
 
-    public IReadOnlyDictionary<string, int> FleetDefinition => ShipSpecification.StandardFleet;
+    public IReadOnlyDictionary<ShipType, int> FleetDefinition => _configuration.FleetDefinition;
 
     public void ApplyPlacements(GamePlayer player, IEnumerable<ShipPlacement> placements)
     {
@@ -199,38 +217,40 @@ public sealed class Game
 
     private void ValidatePlacements(IReadOnlyCollection<ShipPlacement> placements)
     {
-        if (placements.Count != ShipSpecification.StandardFleet.Count)
+        var fleetDef = _configuration.FleetDefinition;
+        
+        if (placements.Count != fleetDef.Count)
         {
-            throw new InvalidOperationException("Invalid number of ships placed.");
+            throw new InvalidOperationException($"Invalid number of ships placed. Expected {fleetDef.Count}, got {placements.Count}.");
         }
 
-        var names = placements.Select(p => p.Name).ToList();
-        if (names.Distinct().Count() != ShipSpecification.StandardFleet.Count)
+        var shipTypes = placements.Select(p => p.ShipType).ToList();
+        if (shipTypes.Distinct().Count() != fleetDef.Count)
         {
-            throw new InvalidOperationException("Ship names must be unique.");
+            throw new InvalidOperationException("Ship types must be unique.");
         }
 
         foreach (var placement in placements)
         {
-            if (!ShipSpecification.StandardFleet.TryGetValue(placement.Name, out var expectedLength))
+            if (!fleetDef.TryGetValue(placement.ShipType, out var expectedLength))
             {
-                throw new InvalidOperationException($"Unknown ship type '{placement.Name}'.");
+                throw new InvalidOperationException($"Unknown ship type '{placement.ShipType}' for game mode '{_configuration.Mode}'.");
             }
 
             var actualLength = expectedLength;
             var coordinates = GenerateCoordinates(placement, actualLength).ToList();
             if (coordinates.Count != expectedLength)
             {
-                throw new InvalidOperationException($"Ship '{placement.Name}' has invalid length.");
+                throw new InvalidOperationException($"Ship '{placement.ShipType}' has invalid length.");
             }
         }
     }
 
     private Ship BuildShip(ShipPlacement placement)
     {
-        var length = ShipSpecification.StandardFleet[placement.Name];
+        var length = _configuration.FleetDefinition[placement.ShipType];
         var coordinates = GenerateCoordinates(placement, length).ToList();
-        return new Ship(placement.Name, coordinates);
+        return new Ship(placement.ShipType, coordinates);
     }
 
     private IEnumerable<Coordinate> GenerateCoordinates(ShipPlacement placement, int length)
