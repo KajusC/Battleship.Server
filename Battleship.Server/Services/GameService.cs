@@ -52,18 +52,11 @@ public sealed class GameService
         }
     }
 
-    /// <summary>
-    /// Joins a player to a game. Creates a new game using the standard configuration if needed.
-    /// </summary>
     public JoinGameResult JoinGame(string connectionId, string playerName)
     {
         return JoinGame(connectionId, playerName, GameMode.standard);
     }
 
-    /// <summary>
-    /// Joins a player to a game with a specific game mode.
-    /// Uses the Prototype pattern to clone the appropriate game configuration.
-    /// </summary>
     public JoinGameResult JoinGame(string connectionId, string playerName, GameMode gameMode)
     {
         if (string.IsNullOrWhiteSpace(playerName))
@@ -170,7 +163,7 @@ public sealed class GameService
             }
             else if (game.Phase != GamePhase.Completed)
             {
-                // keep game in dictionary so opponent can get notification
+                // game over
             }
 
             return game;

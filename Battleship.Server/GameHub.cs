@@ -21,15 +21,10 @@ public class GameHub : Hub
         _gameService = GameService.Instance;
     }
 
-    /// <summary>
-    /// Join a game with a specific game mode.
-    /// Uses Prototype pattern via GameService to create game from configuration template.
-    /// </summary>
     public async Task<JoinGameResponseDto> JoinGame(string playerName, bool IsSinglePlayer, string? gameMode = "standard")
     {
         try
         {
-            // Parse game mode, default to standard if invalid
             if (!Enum.TryParse<GameMode>(gameMode, true, out var mode))
             {
                 mode = GameMode.standard;
@@ -86,10 +81,6 @@ public class GameHub : Hub
         
     }
 
-    /// <summary>
-    /// Gets available game modes and their configurations.
-    /// Demonstrates accessing the prototype registry.
-    /// </summary>
     public Task<IEnumerable<string>> GetAvailableGameModes()
     {
         return Task.FromResult(GameConfigurationPrototypes.GetAvailableModes());

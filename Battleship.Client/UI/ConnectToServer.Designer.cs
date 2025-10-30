@@ -59,7 +59,7 @@
             textBoxServerUrl.Name = "textBoxServerUrl";
             textBoxServerUrl.Size = new Size(365, 30);
             textBoxServerUrl.TabIndex = 0;
-            textBoxServerUrl.Text = "http://localhost:5000";
+            textBoxServerUrl.Text = "http://localhost:5260";
             // 
             // textBoxPlayerName
             // 
