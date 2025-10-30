@@ -17,7 +17,7 @@ public enum GamePhase
 public interface IGameObserver
 {
     void OnPhaseChanged(Game game, GamePhase oldPhase, GamePhase newPhase);
-    void OnTurnChanged(Game game, string? oldPlayerId, string? newPlayerId);
+    void OnScoreboardChange(Game game);
 }
 
 
@@ -29,6 +29,7 @@ public sealed class Game
     private readonly Dictionary<string, GamePlayer> _playersByConnection = new();
     public readonly int _boardSize;
     private readonly IGameConfigurationPrototype _configuration;
+    private readonly Scoreboard _scoreboard = new();
 
     public GamePhase Phase
     {
@@ -57,24 +58,16 @@ public sealed class Game
         _observers.Remove(observer);
     }
 
-    /// <summary>
-    /// Creates a game with a specific board size (legacy constructor).
-    /// Uses standard game configuration.
-    /// </summary>
     public Game(int boardSize)
     {
         _boardSize = boardSize;
-        _configuration = GameConfigurationPrototypes.StandardGame.DeepClone();
+        _configuration = GameConfigurationPrototypes.StandardGame.ShallowClone();
         Id = Guid.NewGuid().ToString("N");
     }
 
-    /// <summary>
-    /// Creates a game from a configuration prototype (Prototype Pattern).
-    /// This constructor clones the configuration for this game instance.
-    /// </summary>
     public Game(IGameConfigurationPrototype configPrototype)
     {
-        _configuration = configPrototype.DeepClone(); // Clone the prototype
+        _configuration = configPrototype.DeepClone();
         _boardSize = _configuration.BoardSize;
         Id = Guid.NewGuid().ToString("N");
     }
@@ -82,6 +75,7 @@ public sealed class Game
     public string Id { get; }
     public string? CurrentTurnPlayerId { get; private set; }
     public IGameConfigurationPrototype Configuration => _configuration;
+    public Scoreboard Scoreboard => _scoreboard;
 
     public IReadOnlyCollection<GamePlayer> Players => _players.Values;
 
@@ -180,6 +174,8 @@ public sealed class Game
         var resolution = target.Board.Shoot(coordinate);
         var isVictory = target.Board.AreAllShipsSunk;
 
+        _scoreboard.RecordShot(shooter.PlayerId, target.PlayerId, resolution.Outcome);
+
         if (isVictory)
         {
             Phase = GamePhase.Completed;
@@ -196,7 +192,7 @@ public sealed class Game
         }
         var result = new FireResult(shooter.PlayerId, target.PlayerId, coordinate, resolution, isVictory, CurrentTurnPlayerId);
 
-        NotifyTurnChanged(shooter.PlayerId, CurrentTurnPlayerId);
+        NotifyScoreboardChange();
 
         return result;
 
@@ -211,8 +207,9 @@ public sealed class Game
         var oldTurnPlayerId = CurrentTurnPlayerId;
         CurrentTurnPlayerId = players[random.Next(players.Count)].PlayerId;
 
-        NotifyTurnChanged(oldTurnPlayerId, CurrentTurnPlayerId);
-
+        _scoreboard.Initialize(this);
+        
+        Phase = GamePhase.InProgress;
     }
 
     private void ValidatePlacements(IReadOnlyCollection<ShipPlacement> placements)
@@ -277,11 +274,11 @@ public sealed class Game
         }
     }
 
-    private void NotifyTurnChanged(string? oldPlayerId, string? newPlayerId)
+    private void NotifyScoreboardChange()
     {
         foreach (var observer in _observers)
         {
-            observer.OnTurnChanged(this, oldPlayerId, newPlayerId);
+            observer.OnScoreboardChange(this);
         }
     }
 }
