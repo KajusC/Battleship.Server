@@ -316,6 +316,12 @@ public sealed class GameForm : Form
         {
             AddLog($"Server error: {message.Message}");
         });
+
+        _client.ScoreboardUpdated += scoreboardData => SafeInvoke(() =>
+        {
+            Console.WriteLine("🎮 GameForm: Received ScoreboardUpdated event");
+            _scoreboardControl.UpdateScoreboard(scoreboardData);
+        });
     }
 
     private void StartPlacementPhase(GameStartMessage message)
@@ -606,6 +612,8 @@ public sealed class GameForm : Form
         _playerBoardControl.Invalidate();
         _opponentBoardControl.Invalidate();
 
+        // Scoreboard will be updated via SignalR observer pattern
+
         if (isPlayerShooter)
         {
             AddLog($"Shot result: {message.Outcome}{(string.IsNullOrEmpty(message.ShipName) ? string.Empty : $" ({message.ShipName})")}");
@@ -629,6 +637,20 @@ public sealed class GameForm : Form
 
         Invalidate();
     }
+
+    /* No longer needed - scoreboard updates via Observer pattern through SignalR
+    private void UpdateScoreboardFromShot(ShotResolutionMessage message)
+    {
+        // This method is kept for reference but is no longer used
+        // The server now sends ScoreboardDto via observer pattern
+    }
+
+    private double CalculateAccuracy(BoardState board)
+    {
+        // This method is kept for reference but is no longer used
+        return 0.0;
+    }
+    */
 
     private void MarkShipAsSunkOnPlayerBoard(string shipName)
     {
@@ -716,7 +738,6 @@ public sealed class GameForm : Form
         _playerBoardControl.Board = _playerBoardState;
         _opponentBoardControl.Board = _opponentBoardState;
         
-        // Dynamically adjust window size based on board size
         AdjustWindowSizeForBoard(size);
         
         _playerBoardControl.Invalidate();
@@ -725,50 +746,46 @@ public sealed class GameForm : Form
 
     private void AdjustWindowSizeForBoard(int boardSize)
     {
-        // Calculate board control size
         const int marginSize = 40;
         const int cellSize = 32;
         int boardControlSize = marginSize * 2 + cellSize * boardSize;
         
-        // Update board control sizes
         _playerBoardControl.Size = new Size(boardControlSize, boardControlSize);
         _opponentBoardControl.Size = new Size(boardControlSize, boardControlSize);
         
-        // Calculate spacing
         const int leftMargin = 40;
         const int topMargin = 140;
-        const int boardSpacing = 20; // Space between boards
-        const int rightPanelWidth = 250; // Ship queue and buttons
+        const int boardSpacing = 20;
+        const int rightPanelWidth = 250;
         const int rightPanelMargin = 20;
         const int logHeight = 210;
         const int bottomMargin = 40;
         
-        // Position opponent board to the right of player board
         _opponentBoardControl.Location = new Point(
             leftMargin + boardControlSize + boardSpacing,
             topMargin
         );
         
-        // Position right panel (ship queue, buttons)
         int rightPanelX = leftMargin + (boardControlSize * 2) + boardSpacing + rightPanelMargin;
         _shipQueueControl.Location = new Point(rightPanelX, topMargin);
         _rotateButton.Location = new Point(rightPanelX, topMargin + 260);
         _resetButton.Location = new Point(rightPanelX, topMargin + 310);
         
-        // Position log control below boards
         int logY = topMargin + boardControlSize + 20;
         int logWidth = leftMargin + (boardControlSize * 2) + boardSpacing - leftMargin;
         _logControl.Location = new Point(leftMargin, logY);
         _logControl.Size = new Size(logWidth, logHeight);
         
-        // Calculate total window size
-        int windowWidth = rightPanelX + rightPanelWidth + rightPanelMargin;
-        int windowHeight = logY + logHeight + bottomMargin;
+        int scoreboardY = logY + logHeight + 20;
+        const int scoreboardHeight = 320;
+        _scoreboardControl.Location = new Point(leftMargin, scoreboardY);
+        _scoreboardControl.Size = new Size(logWidth, scoreboardHeight);
         
-        // Apply new window size
+        int windowWidth = rightPanelX + rightPanelWidth + rightPanelMargin;
+        int windowHeight = scoreboardY + scoreboardHeight + bottomMargin;
+        
         ClientSize = new Size(windowWidth, windowHeight);
         
-        AddLog($"Window adjusted for {boardSize}×{boardSize} board");
     }
 
     private void AddLog(string message)

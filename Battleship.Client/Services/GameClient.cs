@@ -36,6 +36,7 @@ public sealed class GameClient : IAsyncDisposable
     public event Action<TurnChangedMessage>? TurnChanged;
     public event Action<WaitingStatusMessage>? OpponentDisconnected;
     public event Action<ErrorMessage>? ErrorReceived;
+    public event Action<ScoreboardMessage>? ScoreboardUpdated;
 
     public Task ConnectAsync() => _connection.StartAsync();
 
@@ -90,6 +91,7 @@ public sealed class GameClient : IAsyncDisposable
         _connection.On<TurnChangedMessage>("TurnChanged", message => TurnChanged?.Invoke(message));
         _connection.On<WaitingStatusMessage>("OpponentDisconnected", message => OpponentDisconnected?.Invoke(message));
         _connection.On<ErrorMessage>("Error", message => ErrorReceived?.Invoke(message));
+        _connection.On<ScoreboardMessage>("ScoreboardUpdated", message => { if (message != null) ScoreboardUpdated?.Invoke(message); });
     }
 }
 

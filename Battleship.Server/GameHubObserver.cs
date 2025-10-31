@@ -40,15 +40,26 @@ public sealed class GameHubObserver : IGameObserver
                 _hubContext.Clients.Client(player.ConnectionId).SendAsync("GamePhaseChanged", payload)));
 
             await Task.WhenAll(broadcasts).ConfigureAwait(false);
+            
+            if (newPhase == GamePhase.InProgress)
+            {
+                var scoreboardDto = game.Scoreboard.ToDto(game);
+                await _hubContext.Clients.Group(game.Id).SendAsync("ScoreboardUpdated", scoreboardDto).ConfigureAwait(false);
+                _logger.LogDebug($"Initial scoreboard sent for game {game.Id}");
+            }
         });
     }
 
-    public void OnTurnChanged(Game game, string? oldPlayerId, string? newPlayerId)
+    public void OnScoreboardChange(Game game)
     {
-    }
+        var scoreboardDto = game.Scoreboard.ToDto(game);
 
-    public void OnShotFired(Game game, FireResult result)
-    {
+        FireAndForget(async () =>
+        {
+            await _hubContext.Clients.Group(game.Id).SendAsync("ScoreboardUpdated", scoreboardDto).ConfigureAwait(false);
+            
+            _logger.LogDebug($"Scoreboard updated for game {game.Id} after shot");
+        });
     }
 
     private void FireAndForget(Func<Task> action)
