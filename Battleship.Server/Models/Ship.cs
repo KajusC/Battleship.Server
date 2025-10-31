@@ -58,16 +58,6 @@ public static class ShipSpecification
         [ShipType.Submarine] = 3,
         [ShipType.Destroyer] = 2
     };
-
-    public static IReadOnlyDictionary<string, int> AdvancedFleet { get; } = new Dictionary<string, int>
-    {
-        ["Carrier"] = 5,
-        ["Battleship"] = 4,
-        ["Cruiser"] = 3,
-        ["Submarine"] = 3,
-        ["Frigate"] = 3,
-        ["Destroyer"] = 2
-    };
 }
 
 public sealed class ShipPlacement

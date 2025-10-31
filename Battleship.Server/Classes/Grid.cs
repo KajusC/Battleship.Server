@@ -1,6 +1,7 @@
 ﻿using Battleship.Server.Enums;
+using Battleship.Server.Models;
 
-namespace Battleship.Server.Models
+namespace Battleship.Server.Classes
 {
     public class Grid
     {   
