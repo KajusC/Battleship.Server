@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Battleship.Server.Models;
-using Battleship.Server.Models.Builder;
 
 namespace Battleship.Server.Services;
 

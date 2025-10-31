@@ -1,4 +1,7 @@
-﻿using Battleship.Server.Enums;
+﻿using Battleship.Client.Classes;
+using Battleship.Client.DesignPatterns;
+using Battleship.Server.Classes;
+using Battleship.Server.Enums;
 using Battleship.Server.Models.Dtos;
 using Battleship.Server.Services;
 using System.Collections;
@@ -33,7 +36,7 @@ namespace Battleship.Server.Models
 
             _strategy = new StrategySearchRandom();
             this.game = game;
-            SetEnemyGrid(game._boardSize, game._boardSize);
+            SetEnemyGrid(10,10);
             lastColumn = 0;
             lastRow = 0;
         }

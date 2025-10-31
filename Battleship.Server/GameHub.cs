@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Battleship.Server.Classes;
 using Battleship.Server.Models;
 using Battleship.Server.Models.Dtos;
 using Battleship.Server.Services;
