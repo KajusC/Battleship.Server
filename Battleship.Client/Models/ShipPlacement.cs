@@ -13,5 +13,5 @@ public sealed class ShipPlacement
     public string Name { get; }
     public int Row { get; }
     public int Column { get; }
-    public ShipOrientation Orientation { get; }
+    public ShipOrientation Orientation { get; set; }
 }
