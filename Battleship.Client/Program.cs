@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 using Battleship.Client.UI;
+using Battleship.Client.Services; // Add this using directive for GameClient
 
 namespace Battleship.Client;
 
