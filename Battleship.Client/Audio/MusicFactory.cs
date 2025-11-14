@@ -12,7 +12,6 @@ namespace Battleship.Client.Audio
 
     public static class MusicFactory
     {
-        // Factory uses SystemAudioPlayer by default.
         private static readonly IAudioPlayer DefaultPlayer = new SystemAudioPlayer();
 
         public static IMusic CreateMusic(MusicType type)

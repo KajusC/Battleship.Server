@@ -20,7 +20,6 @@ namespace Battleship.Client.Audio
 
         public void PlayOnce(string filePath)
         {
-            // PlaySync would block; Play() is non-blocking and plays once.
             var player = new SoundPlayer(filePath);
             player.Play();
         }

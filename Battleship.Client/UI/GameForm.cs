@@ -26,8 +26,7 @@ public sealed class GameForm : Form
     private BoardState _playerBoardState = new(10);
     private BoardState _opponentBoardState = new(10);
 
-    //Music
-    private IMusic? _currentMusic;
+    private    IMusic? _currentMusic;
 
     private readonly List<ShipDefinition> _fleet = new();
     private readonly List<ShipPlacement> _placements = new();
@@ -570,15 +569,9 @@ public sealed class GameForm : Form
         }
     }
 
-    //
-    // IGameUI implementation — Bridge Pattern: GameForm now serves as a concrete Abstraction
-    // that delegates rendering and messaging to platform-specific UI controls while the
-    // GameClient/service layer can act as the Implementation side.
-    //
 
     public void RenderBoard(BoardState playerBoard, BoardState opponentBoard)
     {
-        // Ensure updates happen on UI thread and wire new board states into controls.
         SafeInvoke(() =>
         {
             _playerBoardState = playerBoard;
@@ -593,16 +586,11 @@ public sealed class GameForm : Form
 
     public void DisplayMessage(string message)
     {
-        // Use the existing logging path for non-blocking messages.
         SafeInvoke(() => AddLog(message));
     }
 
     public Task HandlePlayerActionAsync()
     {
-        // Bridge point for higher-level logic to trigger UI-driven player actions.
-        // Currently a no-op because GameForm uses event handlers for clicks/keys.
-        // If you need asynchronous coordination (e.g. waiting for player placement),
-        // implement a TaskCompletionSource flow here and complete it from the event handlers.
         return Task.CompletedTask;
     }
 }
