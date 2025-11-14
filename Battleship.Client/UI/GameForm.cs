@@ -5,6 +5,7 @@ using System.Linq;
 using System.Media;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Battleship.Client.Audio;
 using Battleship.Client.Models;
 using Battleship.Client.Networking;
 using Battleship.Client.Services;
@@ -26,6 +27,8 @@ public sealed class GameForm : Form
 
     private BoardState _playerBoardState = new(10);
     private BoardState _opponentBoardState = new(10);
+
+    private    IMusic? _currentMusic;
 
     private readonly List<ShipDefinition> _fleet = new();
     private readonly List<ShipPlacement> _placements = new();
@@ -56,6 +59,7 @@ public sealed class GameForm : Form
         DoubleBuffered = true;
         KeyPreview = true;
 
+        PlayMusic(MusicType.Menu);
         _playerBoardControl = new BoardControl
         {
             Location = new Point(40, 140),
@@ -120,6 +124,13 @@ public sealed class GameForm : Form
         FormClosing += async (_, _) => await _client.DisposeAsync();
 
         KeyDown += GameForm_KeyDown;
+    }
+
+    private void PlayMusic(MusicType type)
+    {
+        _currentMusic?.Stop();
+        _currentMusic = MusicFactory.CreateMusic(type);
+        _currentMusic.Play();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -249,6 +260,7 @@ public sealed class GameForm : Form
             _stage = GameStage.Completed;
             var isWinner = string.Equals(message.WinnerPlayerId, _client.PlayerId, StringComparison.Ordinal);
             AddLog(isWinner ? "You won the battle!" : $"{message.WinnerName} won the battle.");
+             PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
             MessageBox.Show(isWinner ? "Victory!" : "Defeat...", "Game finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Invalidate();
         });
@@ -654,5 +666,30 @@ public sealed class GameForm : Form
             ResetPlacements();
             e.Handled = true;
         }
+    }
+
+
+    public void RenderBoard(BoardState playerBoard, BoardState opponentBoard)
+    {
+        SafeInvoke(() =>
+        {
+            _playerBoardState = playerBoard;
+            _opponentBoardState = opponentBoard;
+            _playerBoardControl.Board = _playerBoardState;
+            _opponentBoardControl.Board = _opponentBoardState;
+            _playerBoardControl.Invalidate();
+            _opponentBoardControl.Invalidate();
+            Invalidate();
+        });
+    }
+
+    public void DisplayMessage(string message)
+    {
+        SafeInvoke(() => AddLog(message));
+    }
+
+    public Task HandlePlayerActionAsync()
+    {
+        return Task.CompletedTask;
     }
 }
