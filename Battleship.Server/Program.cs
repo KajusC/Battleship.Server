@@ -14,6 +14,7 @@ namespace Battleship.Server
             builder.Services.AddSingleton<BotCommandQueue>();
             builder.Services.AddSingleton<IGameObserver, GameHubObserver>();
             builder.Services.AddHostedService<GameBotService>();
+            builder.Services.AddHostedService<ConsoleCommandService>();
             var app = builder.Build();
 
             GameService.RegisterObservers(app.Services.GetServices<IGameObserver>());

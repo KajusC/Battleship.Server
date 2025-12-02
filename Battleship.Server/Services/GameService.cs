@@ -170,6 +170,55 @@ public sealed class GameService
         }
     }
 
+    public Game? RemovePlayerByName(string playerName)
+    {
+        lock (_syncRoot)
+        {
+            var gameEntry = _gamesByConnection.FirstOrDefault(kvp =>
+            {
+                var game = kvp.Value;
+                var player = game.Players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+                return player != null;
+            });
+            if (string.IsNullOrEmpty(gameEntry.Key))
+            {
+                throw new InvalidOperationException("Player is not part of any game.");
+            }
+            return RemovePlayer(gameEntry.Key);
+        }
+    }
+
+    public int ActiveGamesCount
+    {
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _games.Count;
+            }
+        }
+    }
+
+    public int ConnectedPlayersCount
+    {
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _gamesByConnection.Count;
+            }
+        }
+    }
+
+    public string GetAllUsers()
+    {
+        lock (_syncRoot)
+        {
+            var users = _gamesByConnection.Values.SelectMany(g => g.Players).Select(p => p.Name).Distinct().ToList();
+            return string.Join(", ", users);
+        }
+    }
+
     private Game GetGameOrThrow(string connectionId)
     {
         if (!_gamesByConnection.TryGetValue(connectionId, out var game))

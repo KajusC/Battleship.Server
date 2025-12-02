@@ -30,14 +30,26 @@ namespace Battleship.Client.Models.Command
 
         public void Rotate(ShipPlacement shipPlacement)
         {
-            ShipPlacement placement = null;
+            int index = -1;
             
             for (int i = 0; i < _placements.Count; i++)
-                if (_placements[i] == shipPlacement) placement = _placements[i];
-            if (placement == null) return;
-            placement.Orientation = placement.Orientation == ShipOrientation.Horizontal
+            {
+                if (_placements[i] == shipPlacement)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            
+            if (index == -1) return;
+            
+            // Create a new ShipPlacement with rotated orientation instead of modifying the existing one
+            var oldPlacement = _placements[index];
+            var newOrientation = oldPlacement.Orientation == ShipOrientation.Horizontal
                     ? ShipOrientation.Vertical
                     : ShipOrientation.Horizontal;
+            var newPlacement = new ShipPlacement(oldPlacement.Name, oldPlacement.Row, oldPlacement.Column, newOrientation);
+            _placements[index] = newPlacement;
         }
     }
 }

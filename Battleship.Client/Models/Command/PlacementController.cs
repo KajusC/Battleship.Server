@@ -31,5 +31,19 @@ namespace Battleship.Client.Models.Command
                 command.Undo();
             }
         }
+
+        public Stack<ICommand> GetCommandStack()
+        {
+            return new Stack<ICommand>(commands.Reverse());
+        }
+
+        public void RestoreCommandStack(Stack<ICommand> commandStack)
+        {
+            commands.Clear();
+            foreach (var command in commandStack.Reverse())
+            {
+                commands.Push(command);
+            }
+        }
     }
 }
