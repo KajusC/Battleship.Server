@@ -28,4 +28,17 @@ public sealed class BoardState
             }
         }
     }
+
+    public BoardState Clone()
+    {
+        var clone = new BoardState(Size);
+        for (var row = 0; row < Size; row++)
+        {
+            for (var column = 0; column < Size; column++)
+            {
+                clone[row, column] = _cells[row, column];
+            }
+        }
+        return clone;
+    }
 }

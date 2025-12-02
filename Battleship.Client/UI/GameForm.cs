@@ -1,14 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Media;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using Battleship.Client.Audio;
 using Battleship.Client.Models;
 using Battleship.Client.Networking;
 using Battleship.Client.Services;
+using System.Media;
 
 namespace Battleship.Client.UI;
 
@@ -21,14 +15,16 @@ public sealed class GameForm : Form
     private readonly ShipQueueControl _shipQueueControl;
     private readonly ActionButton _rotateButton;
     private readonly ActionButton _resetButton;
+    private readonly ActionButton _revertButton;
     private readonly ScoreboardControl _scoreboardControl;
+    private readonly List<PositionMemento> positionMementos;
     private string serverIp;
     private string _gameMode;
 
     private BoardState _playerBoardState = new(10);
     private BoardState _opponentBoardState = new(10);
 
-    private    IMusic? _currentMusic;
+    private IMusic? _currentMusic;
 
     private readonly List<ShipDefinition> _fleet = new();
     private readonly List<ShipPlacement> _placements = new();
@@ -47,11 +43,12 @@ public sealed class GameForm : Form
         this._playerName = playerName;
         this.isSinglePlayer = isSinglePlayer;
         this._gameMode = gameMode;
-        
+        this.positionMementos = new List<PositionMemento>();
+
         Text = isSinglePlayer ? $"Battleship Singleplayer - {gameMode}" : $"Battleship Multiplayer - {gameMode}";
         BackColor = Color.FromArgb(35, 40, 55);
         ForeColor = Color.WhiteSmoke;
-        
+
         // Start with standard size, will be adjusted when board size is received
         ClientSize = new Size(1100, 680);
         FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -100,6 +97,15 @@ public sealed class GameForm : Form
         };
         _resetButton.Click += (_, _) => ResetPlacements();
 
+        _revertButton = new ActionButton
+        {
+            Text = "Revert last ship",
+            Location = new Point(830, 510)
+        };
+
+        _revertButton.Click += (_, _) => RevertPlacements();
+
+
         _scoreboardControl = new ScoreboardControl
         {
             Location = new Point(40, 660),
@@ -114,6 +120,7 @@ public sealed class GameForm : Form
             _shipQueueControl,
             _rotateButton,
             _resetButton,
+            _revertButton,
             _scoreboardControl
         });
 
@@ -131,6 +138,48 @@ public sealed class GameForm : Form
         _currentMusic?.Stop();
         _currentMusic = MusicFactory.CreateMusic(type);
         _currentMusic.Play();
+    }
+
+    private void RevertPlacements()
+    {
+        if (_stage != GameStage.Placement)
+        {
+            return;
+        }
+
+        if (positionMementos.Count == 0)
+        {
+            AddLog("No placements to revert.");
+            return;
+        }
+
+        positionMementos.RemoveAt(positionMementos.Count - 1);
+
+        if (positionMementos.Count > 0)
+        {
+            var previousMemento = positionMementos[positionMementos.Count - 1];
+            _placements.Clear();
+            _placements.AddRange(previousMemento.GetSavedPlacements());
+            _playerBoardState = previousMemento.GetBoardState();
+        }
+        else
+        {
+            _placements.Clear();
+            _playerBoardState.Clear(CellState.Unknown);
+        }
+
+        _playerBoardControl.Board = _playerBoardState;
+        _playerBoardControl.Invalidate();
+        
+        _shipQueueControl.SetFleet(_fleet);
+        foreach (var placement in _placements)
+        {
+            _shipQueueControl.MarkPlaced(placement.Name);
+        }
+        
+        AdvancePlacementQueue();
+        UpdatePlacementButtons();
+        AddLog("Reverted last ship placement.");
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -260,7 +309,7 @@ public sealed class GameForm : Form
             _stage = GameStage.Completed;
             var isWinner = string.Equals(message.WinnerPlayerId, _client.PlayerId, StringComparison.Ordinal);
             AddLog(isWinner ? "You won the battle!" : $"{message.WinnerName} won the battle.");
-             PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
+            PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
             MessageBox.Show(isWinner ? "Victory!" : "Defeat...", "Game finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Invalidate();
         });
@@ -293,11 +342,13 @@ public sealed class GameForm : Form
         _fleet.AddRange(message.Fleet.Select(f => new ShipDefinition(f.Name, f.Length)));
         _shipQueueControl.SetFleet(_fleet);
         _placements.Clear();
+        positionMementos.Clear(); // Clear mementos when starting a new placement phase
         _playerBoardState.Clear(CellState.Unknown);
         _playerBoardControl.Board = _playerBoardState;
         _opponentBoardControl.Board = _opponentBoardState;
         AdvancePlacementQueue();
         AddLog("Place your ships on the left board. Left click to place, right click to rotate, or press R to rotate.");
+        AddLog("Use 'Revert last ship' button or ESC to undo, 'Reset placement' to start over.");
         Invalidate();
     }
 
@@ -305,7 +356,17 @@ public sealed class GameForm : Form
     {
         _currentShip = _fleet.FirstOrDefault(ship => _placements.All(p => !string.Equals(p.Name, ship.Name, StringComparison.OrdinalIgnoreCase)));
         _shipQueueControl.SetCurrentShip(_currentShip?.Name);
+        UpdatePlacementButtons();
         Invalidate();
+    }
+
+    /// <summary>
+    /// Updates the enabled state of placement-related buttons based on current state
+    /// </summary>
+    private void UpdatePlacementButtons()
+    {
+        _revertButton.Enabled = positionMementos.Count > 0;
+        _resetButton.Enabled = _placements.Count > 0;
     }
 
     private void PlayerBoardOnCellClicked(object? sender, BoardCellEventArgs e)
@@ -324,7 +385,7 @@ public sealed class GameForm : Form
         if (!CanPlaceShip(e.Row, e.Column, _currentShip.Length, _currentOrientation))
         {
             SystemSounds.Beep.Play();
-            AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}." );
+            AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
             return;
         }
 
@@ -441,6 +502,10 @@ public sealed class GameForm : Form
         return true;
     }
 
+    /// <summary>
+    /// Places a ship on the board and creates a memento for undo functionality
+    /// Memento pattern: Saves state after each ship placement
+    /// </summary>
     private void PlaceShip(int row, int column, ShipDefinition ship)
     {
         for (var i = 0; i < ship.Length; i++)
@@ -451,6 +516,9 @@ public sealed class GameForm : Form
         }
 
         _placements.Add(new ShipPlacement(ship.Name, row, column, _currentOrientation));
+
+        this.SaveMemento();
+
         _playerBoardControl.Invalidate();
     }
 
@@ -562,6 +630,7 @@ public sealed class GameForm : Form
             return;
         }
 
+        SaveMemento();
         _placements.Clear();
         _playerBoardState.Clear(CellState.Unknown);
         _playerBoardControl.Invalidate();
@@ -586,9 +655,9 @@ public sealed class GameForm : Form
         _opponentBoardState.Clear(CellState.Unknown);
         _playerBoardControl.Board = _playerBoardState;
         _opponentBoardControl.Board = _opponentBoardState;
-        
+
         AdjustWindowSizeForBoard(size);
-        
+
         _playerBoardControl.Invalidate();
         _opponentBoardControl.Invalidate();
     }
@@ -598,10 +667,10 @@ public sealed class GameForm : Form
         const int marginSize = 40;
         const int cellSize = 32;
         int boardControlSize = marginSize * 2 + cellSize * boardSize;
-        
+
         _playerBoardControl.Size = new Size(boardControlSize, boardControlSize);
         _opponentBoardControl.Size = new Size(boardControlSize, boardControlSize);
-        
+
         const int leftMargin = 40;
         const int topMargin = 140;
         const int boardSpacing = 20;
@@ -609,32 +678,33 @@ public sealed class GameForm : Form
         const int rightPanelMargin = 20;
         const int logHeight = 210;
         const int bottomMargin = 40;
-        
+
         _opponentBoardControl.Location = new Point(
             leftMargin + boardControlSize + boardSpacing,
             topMargin
         );
-        
+
         int rightPanelX = leftMargin + (boardControlSize * 2) + boardSpacing + rightPanelMargin;
         _shipQueueControl.Location = new Point(rightPanelX, topMargin);
         _rotateButton.Location = new Point(rightPanelX, topMargin + 260);
         _resetButton.Location = new Point(rightPanelX, topMargin + 310);
-        
+        _revertButton.Location = new Point(rightPanelX, topMargin + 360);
+
         int logY = topMargin + boardControlSize + 20;
         int logWidth = leftMargin + (boardControlSize * 2) + boardSpacing - leftMargin;
         _logControl.Location = new Point(leftMargin, logY);
         _logControl.Size = new Size(logWidth, logHeight);
-        
+
         int scoreboardY = logY + logHeight + 20;
         const int scoreboardHeight = 320;
         _scoreboardControl.Location = new Point(leftMargin, scoreboardY);
         _scoreboardControl.Size = new Size(logWidth, scoreboardHeight);
-        
+
         int windowWidth = rightPanelX + rightPanelWidth + rightPanelMargin;
         int windowHeight = scoreboardY + scoreboardHeight + bottomMargin;
-        
+
         ClientSize = new Size(windowWidth, windowHeight);
-        
+
     }
 
     private void AddLog(string message)
@@ -668,8 +738,7 @@ public sealed class GameForm : Form
         }
     }
 
-
-    public void RenderBoard(BoardState playerBoard, BoardState opponentBoard)
+    private void RenderBoard(BoardState playerBoard, BoardState opponentBoard)
     {
         SafeInvoke(() =>
         {
@@ -683,13 +752,20 @@ public sealed class GameForm : Form
         });
     }
 
-    public void DisplayMessage(string message)
+    private void DisplayMessage(string message)
     {
         SafeInvoke(() => AddLog(message));
     }
 
-    public Task HandlePlayerActionAsync()
+    private Task HandlePlayerActionAsync()
     {
         return Task.CompletedTask;
+    }
+
+    private void SaveMemento()
+    {
+        // Memento pattern: Save current state
+        var memento = new PositionMemento(this._placements, this._playerBoardState);
+        positionMementos.Add(memento);
     }
 }
