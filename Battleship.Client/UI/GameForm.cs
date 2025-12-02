@@ -1,7 +1,9 @@
 using Battleship.Client.Audio;
 using Battleship.Client.Models;
+using Battleship.Client.Models.Command;
 using Battleship.Client.Networking;
 using Battleship.Client.Services;
+using System.Data;
 using System.Media;
 
 namespace Battleship.Client.UI;
@@ -18,6 +20,22 @@ public sealed class GameForm : Form
     private readonly ActionButton _revertButton;
     private readonly ScoreboardControl _scoreboardControl;
     private readonly List<PositionMemento> positionMementos;
+
+    private readonly ActionButton _Weapon0Button;
+    private readonly ActionButton _Weapon1Button;
+    private readonly ActionButton _Weapon2Button;
+    private readonly ActionButton _Weapon3Button;
+    //Command
+    private readonly ActionButton _placeButton;
+    private readonly ActionButton _rotateOneButton;
+    private readonly ActionButton _moveButton;
+    private readonly ActionButton _submitPlacementsButton;
+    //Command
+    private PlacementController placementsController = new();
+    private ShipPlacement? tempPl = null;
+    private string commandType = "Place";
+    private ShipPlacements placemenetsReceiver;
+
     private string serverIp;
     private string _gameMode;
 
@@ -34,10 +52,13 @@ public sealed class GameForm : Form
     private string _playerName;
     private string? _opponentName;
     private bool isSinglePlayer;
-
+    private int WeaponType = 0;
     private GameStage _stage = GameStage.Connecting;
 
-    public GameForm(string serverIp, string playerName, bool isSinglePlayer, string gameMode = "standard")
+    private GameState gameState = new StartingState();
+    private int playerPoints = 0;
+    private int opponentPoints = 0;
+    public GameForm(string serverIp, string playerName, bool isSinglePlayer, string gameMode = "standard", bool useWeapons = false)
     {
         this.serverIp = serverIp;
         this._playerName = playerName;
@@ -50,11 +71,15 @@ public sealed class GameForm : Form
         ForeColor = Color.WhiteSmoke;
 
         // Start with standard size, will be adjusted when board size is received
-        ClientSize = new Size(1100, 680);
+        ClientSize = new Size(1000, 600);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         DoubleBuffered = true;
         KeyPreview = true;
+
+        //Command
+        placemenetsReceiver = new(_placements);
+
 
         PlayMusic(MusicType.Menu);
         _playerBoardControl = new BoardControl
@@ -99,7 +124,7 @@ public sealed class GameForm : Form
 
         _revertButton = new ActionButton
         {
-            Text = "Revert last ship",
+            Text = "Revert last action",
             Location = new Point(830, 510)
         };
 
@@ -111,6 +136,63 @@ public sealed class GameForm : Form
             Location = new Point(40, 660),
             Size = new Size(760, 250)
         };
+        _Weapon0Button = new ActionButton
+        {
+            Text = "Weapon: Cannon (1x1)",
+            Location = new Point(500, 0)
+        };
+        _Weapon0Button.Click += (_, _) => SetWeapon(0);
+        _Weapon1Button = new ActionButton
+        {
+            Text = "Weapon: Rocket (Cross)",
+            Location = new Point(650, 0)
+        };
+        _Weapon1Button.Click += (_, _) => SetWeapon(1);
+        _Weapon2Button = new ActionButton
+        {
+            Text = "Weapon: Bomb (3x3)",
+            Location = new Point(800, 0)
+        };
+        _Weapon2Button.Click += (_, _) => SetWeapon(2);
+
+        _Weapon3Button = new ActionButton
+        {
+            Text = "Weapon: Misile swarm (1x1, free turn)",
+            Location = new Point(950, 0)
+        };
+        _Weapon3Button.Click += (_, _) => SetWeapon(3);
+        _Weapon0Button.Visible = useWeapons;
+        _Weapon1Button.Visible = useWeapons;
+        _Weapon2Button.Visible = useWeapons;
+        _Weapon3Button.Visible = useWeapons;
+
+        _placeButton = new ActionButton
+        {
+            Text = "C:Place",
+            Location = new Point(1050, 400)
+        };
+        _placeButton.Click += (_, _) => Place();
+
+        _rotateOneButton = new ActionButton
+        {
+            Text = "C:Rotate",
+            Location = new Point(1050, 450)
+        };
+        _rotateOneButton.Click += (_, _) => Rotate();
+
+        _moveButton = new ActionButton
+        {
+            Text = "C:move",
+            Location = new Point(1050, 500)
+        };
+        _moveButton.Click += (_, _) => Move();
+        _submitPlacementsButton = new ActionButton
+        {
+            Text = "C:Submit",
+            Location = new Point(880, 560)
+        };
+        _submitPlacementsButton.Click += (_, _) => SubmitPlacements();
+
 
         Controls.AddRange(new Control[]
         {
@@ -120,8 +202,19 @@ public sealed class GameForm : Form
             _shipQueueControl,
             _rotateButton,
             _resetButton,
+            _scoreboardControl,
+            //Template
+            _Weapon0Button,
+            _Weapon1Button,
+            _Weapon2Button,
+            _Weapon3Button,
+            //Command
             _revertButton,
-            _scoreboardControl
+            _placeButton,
+            _rotateOneButton,
+            _moveButton,
+            _submitPlacementsButton
+            //
         });
 
         _client = new GameClient($"{serverIp}/gamehub");
@@ -153,33 +246,29 @@ public sealed class GameForm : Form
             return;
         }
 
+        var previousMemento = positionMementos[positionMementos.Count - 1];
         positionMementos.RemoveAt(positionMementos.Count - 1);
 
-        if (positionMementos.Count > 0)
-        {
-            var previousMemento = positionMementos[positionMementos.Count - 1];
-            _placements.Clear();
-            _placements.AddRange(previousMemento.GetSavedPlacements());
-            _playerBoardState = previousMemento.GetBoardState();
-        }
-        else
-        {
-            _placements.Clear();
-            _playerBoardState.Clear(CellState.Unknown);
-        }
+        _placements.Clear();
+        _placements.AddRange(previousMemento.GetSavedPlacements());
+        _playerBoardState = previousMemento.GetBoardState();
+        placementsController.RestoreCommandStack(previousMemento.GetCommandStack());
 
         _playerBoardControl.Board = _playerBoardState;
-        _playerBoardControl.Invalidate();
         
+        // Update the visual representation of ship placements
+        UpdateShipPlacements();
+        
+        // Reset ship queue and mark placed ships
         _shipQueueControl.SetFleet(_fleet);
         foreach (var placement in _placements)
         {
             _shipQueueControl.MarkPlaced(placement.Name);
         }
-        
+
         AdvancePlacementQueue();
         UpdatePlacementButtons();
-        AddLog("Reverted last ship placement.");
+        AddLog("Reverted to previous state.");
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -288,6 +377,7 @@ public sealed class GameForm : Form
         _client.GameStarted += message => SafeInvoke(() =>
         {
             _stage = GameStage.InProgress;
+            SetGameState(new WinningState());
             _isMyTurn = string.Equals(message.CurrentPlayerId, _client.PlayerId, StringComparison.Ordinal);
             AddLog(_isMyTurn ? "You will start the game." : "Opponent will start the game.");
             Invalidate();
@@ -309,7 +399,8 @@ public sealed class GameForm : Form
             _stage = GameStage.Completed;
             var isWinner = string.Equals(message.WinnerPlayerId, _client.PlayerId, StringComparison.Ordinal);
             AddLog(isWinner ? "You won the battle!" : $"{message.WinnerName} won the battle.");
-            PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
+            SetGameState(isWinner ? new WonState() : new LostState());
+            //PlayMusic(isWinner ? MusicType.Victory : MusicType.Defeat);
             MessageBox.Show(isWinner ? "Victory!" : "Defeat...", "Game finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Invalidate();
         });
@@ -377,25 +468,123 @@ public sealed class GameForm : Form
             return;
         }
 
-        if (_stage != GameStage.Placement || _currentShip is null)
+        if (_stage != GameStage.Placement)
         {
             return;
         }
-
-        if (!CanPlaceShip(e.Row, e.Column, _currentShip.Length, _currentOrientation))
+        switch (commandType)
         {
-            SystemSounds.Beep.Play();
-            AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
-            return;
-        }
+            case "Place":
+                if (_currentShip is null)
+                {
+                    AddLog($"All fleet is in place.");
+                    return;
+                }
+                if (!CanPlaceShip(e.Row, e.Column, _currentShip.Length, _currentOrientation))
+                {
+                    SystemSounds.Beep.Play();
+                    AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    return;
+                }
+                SaveMemento();
+                ShipPlacement placement = new ShipPlacement(_currentShip.Name, e.Row, e.Column, _currentOrientation);
+                placementsController.add(new PlaceCommand(placemenetsReceiver, placement));
+                break;
+            case "Move":
+                if (tempPl == null)
+                {
+                    foreach (var p in _placements) if (p.Column == e.Column && p.Row == e.Row) tempPl = p;
+                    if (tempPl == null) break;
+                    AddLog($"Selected place {tempPl.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                }
+                else
+                {
+                    var results1 = _fleet.First(a => a.Name == tempPl.Name);
+                    if (!CanPlaceShip(e.Row, e.Column, results1.Length, _currentOrientation))
+                    {
+                        SystemSounds.Beep.Play();
+                        AddLog($"Cannot move {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                        return;
+                    }
+                    AddLog($"New place {tempPl.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    SaveMemento();
+                    ShipPlacement pp = new ShipPlacement(tempPl.Name, e.Row, e.Column, tempPl.Orientation);
+                    placementsController.add(new MoveCommand(placemenetsReceiver, tempPl, pp));
+                    tempPl = null;
+                }
+                break;
+            case "Rotate":
+                ShipPlacement? pl = null;
+                int ind = -1;
+                for (int i = 0; i < _placements.Count; i++)
+                {
+                    var p = _placements[i];
+                    if (p.Column == e.Column && p.Row == e.Row) 
+                    {
+                        ind = i;
+                        break;
+                    }
+                }
+                if (ind == -1) 
+                {
+                    AddLog($"No ship found at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    break;
+                }
+                
+                var shipToRotate = _placements[ind];
+                var results2 = _fleet.First(a => a.Name == shipToRotate.Name);
+                var newOrientation = shipToRotate.Orientation == ShipOrientation.Horizontal 
+                    ? ShipOrientation.Vertical 
+                    : ShipOrientation.Horizontal;
 
-        PlaceShip(e.Row, e.Column, _currentShip);
-        _shipQueueControl.MarkPlaced(_currentShip.Name);
+                // Temporarily clear the ship's current position for validation
+                for (var i = 0; i < results2.Length; i++)
+                {
+                    var r = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Row : shipToRotate.Row + i;
+                    var c = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Column + i : shipToRotate.Column;
+                    _playerBoardState[r, c] = CellState.Unknown;
+                }
+
+                if (!CanPlaceShip(shipToRotate.Row, shipToRotate.Column, results2.Length, newOrientation))
+                {
+                    SystemSounds.Beep.Play();
+                    AddLog($"Cannot rotate {shipToRotate.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
+                    // Restore the ship's original position
+                    for (var i = 0; i < results2.Length; i++)
+                    {
+                        var r = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Row : shipToRotate.Row + i;
+                        var c = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Column + i : shipToRotate.Column;
+                        _playerBoardState[r, c] = CellState.Ship;
+                    }
+                    return;
+                }
+                
+                SaveMemento();
+                placementsController.add(new RotateCommand(placemenetsReceiver, shipToRotate));
+                AddLog($"Rotated {shipToRotate.Name} to {newOrientation}.");
+                break;
+
+
+        }
+        //_shipQueueControl.MarkPlaced(_currentShip.Name);
+
+        UpdateShipPlacements();
         AdvancePlacementQueue();
 
+        //if (_currentShip is null)
+        //{
+        //    _ = SubmitPlacementsAsync();
+        //}
+    }
+    private void SubmitPlacements()
+    {
         if (_currentShip is null)
         {
             _ = SubmitPlacementsAsync();
+        }
+        else
+        {
+            AddLog($"Please place all the ships.");
         }
     }
 
@@ -452,7 +641,7 @@ public sealed class GameForm : Form
         try
         {
             AddLog($"Firing at {(char)('A' + column)}{row + 1}...");
-            await _client.FireAsync(_client.GameId, row, column);
+            await _client.FireAsync(_client.GameId, row, column, WeaponType);
         }
         catch (Exception ex)
         {
@@ -515,10 +704,7 @@ public sealed class GameForm : Form
             _playerBoardState[r, c] = CellState.Ship;
         }
 
-        _placements.Add(new ShipPlacement(ship.Name, row, column, _currentOrientation));
-
-        this.SaveMemento();
-
+        //_placements.Add(new ShipPlacement(ship.Name, row, column, _currentOrientation));
         _playerBoardControl.Invalidate();
     }
 
@@ -539,8 +725,41 @@ public sealed class GameForm : Form
             nameof(Models.ShotOutcome.Sunk) or "Sunk" => CellState.Sunk,
             _ => CellState.Miss
         };
+        if (isPlayerShooter && (cellState == CellState.Hit || cellState == CellState.Sunk)) playerPoints++;
+        else if ((cellState == CellState.Hit || cellState == CellState.Sunk)) opponentPoints++;
+        if (opponentPoints > playerPoints) SetGameState(new LoosingState());
+        else SetGameState(new WinningState());
+        Coordinate c = new Coordinate(message.Target.Row, message.Target.Column);
+        List<Coordinate> coordinates = new List<Coordinate>();
+        targetBoard[c.Row, c.Column] = cellState;
+        if (message.WeaponType == 1)
+        {
+            coordinates.Add(new Coordinate(c.Row + 1, c.Column));
+            coordinates.Add(new Coordinate(c.Row - 1, c.Column));
+            coordinates.Add(new Coordinate(c.Row, c.Column + 1));
+            coordinates.Add(new Coordinate(c.Row, c.Column - 1));
+        }
+        if (message.WeaponType == 2)
+        {
+            coordinates.Add(new Coordinate(c.Row + 1, c.Column));
+            coordinates.Add(new Coordinate(c.Row - 1, c.Column));
+            coordinates.Add(new Coordinate(c.Row, c.Column + 1));
+            coordinates.Add(new Coordinate(c.Row, c.Column - 1));
+            coordinates.Add(new Coordinate(c.Row + 1, c.Column + 1));
+            coordinates.Add(new Coordinate(c.Row - 1, c.Column - 1));
+            coordinates.Add(new Coordinate(c.Row - 1, c.Column + 1));
+            coordinates.Add(new Coordinate(c.Row + 1, c.Column - 1));
+        }
+        foreach (var co in coordinates)
+        {
+            //targetBoard[co.Row, co.Column] = CellState.NotUnknown;
+            if (co.Row >= 0 && co.Column >= 0 && co.Row < _playerBoardState.Size && co.Column < _playerBoardState.Size)
+            {
+                if (CellState.Unknown == targetBoard[co.Row, co.Column])
+                    targetBoard[co.Row, co.Column] = CellState.NotUnknown;
+            }
 
-        targetBoard[row, column] = cellState;
+        }
 
         if (cellState == CellState.Sunk && !string.IsNullOrEmpty(message.ShipName))
         {
@@ -629,14 +848,26 @@ public sealed class GameForm : Form
         {
             return;
         }
-
+        
         SaveMemento();
+        
+        while (!placementsController.IsEmpty())
+        {
+            placementsController.undo();
+        }
+        
+        // Clear placements and board
         _placements.Clear();
         _playerBoardState.Clear(CellState.Unknown);
+        _playerBoardControl.Board = _playerBoardState;
         _playerBoardControl.Invalidate();
+        
+        // Reset ship queue to show all ships as unplaced
         _shipQueueControl.SetFleet(_fleet);
+        
         AdvancePlacementQueue();
-        AddLog("Placement reset.");
+        UpdatePlacementButtons();
+        AddLog("Placement reset. Use 'Revert last action' to undo this reset.");
     }
 
     private void ToggleOrientation()
@@ -646,7 +877,52 @@ public sealed class GameForm : Form
             : ShipOrientation.Horizontal;
         AddLog($"Orientation set to {_currentOrientation}.");
     }
+    //Command
+    private void UpdateShipPlacements()
+    {
+        _playerBoardState.Clear(CellState.Unknown);
+        _shipQueueControl.Clear();
+        foreach (var p in _placements)
+        {
+            ShipDefinition sDef = null;
+            foreach (var f in _fleet)
+            {
+                if (f.Name == p.Name) sDef = f;
+            }
+            if (sDef == null) continue;
+            for (var i = 0; i < sDef.Length; i++)
+            {
+                var r = p.Orientation == ShipOrientation.Horizontal ? p.Row : p.Row + i;
+                var c = p.Orientation == ShipOrientation.Horizontal ? p.Column + i : p.Column;
+                _playerBoardState[r, c] = CellState.Ship;
+            }
+            _shipQueueControl.MarkPlaced(p.Name);
+        }
+        _playerBoardControl.Invalidate();
+    }
 
+    private void Place()
+    {
+        commandType = "Place";
+        AddLog($"Command: Place placement.");
+    }
+    private void Rotate()
+    {
+        commandType = "Rotate";
+        AddLog($"Command: Rotate.");
+    }
+    private void Move()
+    {
+        commandType = "Move";
+        tempPl = null;
+        AddLog($"Command: Move.");
+    }
+
+    //Template
+    private void SetWeapon(int WeaponType)
+    {
+        this.WeaponType = WeaponType;
+    }
     private void ConfigureBoardSizes(int size)
     {
         _playerBoardState = new BoardState(size);
@@ -678,6 +954,8 @@ public sealed class GameForm : Form
         const int rightPanelMargin = 20;
         const int logHeight = 210;
         const int bottomMargin = 40;
+        const int buttonHeight = 40;
+        const int buttonSpacing = 10;
 
         _opponentBoardControl.Location = new Point(
             leftMargin + boardControlSize + boardSpacing,
@@ -686,21 +964,49 @@ public sealed class GameForm : Form
 
         int rightPanelX = leftMargin + (boardControlSize * 2) + boardSpacing + rightPanelMargin;
         _shipQueueControl.Location = new Point(rightPanelX, topMargin);
-        _rotateButton.Location = new Point(rightPanelX, topMargin + 260);
-        _resetButton.Location = new Point(rightPanelX, topMargin + 310);
-        _revertButton.Location = new Point(rightPanelX, topMargin + 360);
+
+        int buttonY = topMargin + 260;
+        _rotateButton.Location = new Point(rightPanelX, buttonY);
+        buttonY += buttonHeight + buttonSpacing;
+        _resetButton.Location = new Point(rightPanelX, buttonY);
+        buttonY += buttonHeight + buttonSpacing;
+        _revertButton.Location = new Point(rightPanelX, buttonY);
 
         int logY = topMargin + boardControlSize + 20;
         int logWidth = leftMargin + (boardControlSize * 2) + boardSpacing - leftMargin;
         _logControl.Location = new Point(leftMargin, logY);
         _logControl.Size = new Size(logWidth, logHeight);
 
+
+        int commandButtonX = rightPanelX;
+        int commandButtonY = logY;
+        _placeButton.Location = new Point(commandButtonX, commandButtonY);
+        commandButtonY += buttonHeight + buttonSpacing;
+        _rotateOneButton.Location = new Point(commandButtonX, commandButtonY);
+        commandButtonY += buttonHeight + buttonSpacing;
+        _moveButton.Location = new Point(commandButtonX, commandButtonY);
+        commandButtonY += buttonHeight + buttonSpacing;
+        commandButtonY += buttonHeight + buttonSpacing;
+        _submitPlacementsButton.Location = new Point(commandButtonX, commandButtonY);
+
+        const int weaponButtonWidth = 150;
+        const int weaponButtonSpacing = 10;
+        int weaponButtonY = 50;
+        int weaponButtonX = leftMargin + (boardControlSize * 2) + boardSpacing + rightPanelMargin;
+        _Weapon0Button.Location = new Point(weaponButtonX, weaponButtonY);
+        weaponButtonX += weaponButtonWidth + weaponButtonSpacing;
+        _Weapon1Button.Location = new Point(weaponButtonX, weaponButtonY);
+        weaponButtonX += weaponButtonWidth + weaponButtonSpacing;
+        _Weapon2Button.Location = new Point(weaponButtonX, weaponButtonY);
+        weaponButtonX += weaponButtonWidth + weaponButtonSpacing;
+        _Weapon3Button.Location = new Point(weaponButtonX, weaponButtonY);
+
         int scoreboardY = logY + logHeight + 20;
         const int scoreboardHeight = 320;
         _scoreboardControl.Location = new Point(leftMargin, scoreboardY);
         _scoreboardControl.Size = new Size(logWidth, scoreboardHeight);
 
-        int windowWidth = rightPanelX + rightPanelWidth + rightPanelMargin;
+        int windowWidth = Math.Max(rightPanelX + rightPanelWidth + rightPanelMargin, weaponButtonX + weaponButtonWidth + rightPanelMargin);
         int windowHeight = scoreboardY + scoreboardHeight + bottomMargin;
 
         ClientSize = new Size(windowWidth, windowHeight);
@@ -762,10 +1068,19 @@ public sealed class GameForm : Form
         return Task.CompletedTask;
     }
 
+    public void SetGameState(GameState gameState)
+    {
+        if (this.gameState.GetType() == gameState.GetType()) return;
+        //this.gameState.StopMusic();
+        this.gameState = gameState;
+        this.gameState.PlayMusic();
+
+        //determine
+    }
+
     private void SaveMemento()
     {
-        // Memento pattern: Save current state
-        var memento = new PositionMemento(this._placements, this._playerBoardState);
+        var memento = new PositionMemento(this._placements, this._playerBoardState, placementsController.GetCommandStack());
         positionMementos.Add(memento);
     }
 }

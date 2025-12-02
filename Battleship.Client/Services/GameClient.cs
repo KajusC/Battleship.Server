@@ -59,14 +59,16 @@ public sealed class GameClient : IAsyncDisposable
         return _connection.InvokeAsync<PlacementResultMessage>("PlaceShips", placements);
     }
 
-    public Task<ShotResolutionMessage> FireAsync(string gameId, int row, int column)
+    public Task<ShotResolutionMessage> FireAsync(string gameId, int row, int column, int WeaponType)
     {
         var request = new ShotRequestDto
         {
             GameId = gameId,
             Row = row,
-            Column = column
+            Column = column,
+            WeaponType = WeaponType
         };
+        Console.WriteLine("FireAsync {0}",request.WeaponType);
         return _connection.InvokeAsync<ShotResolutionMessage>("Fire", request);
     }
 
@@ -108,4 +110,5 @@ public sealed class ShotRequestDto
     public string GameId { get; set; } = string.Empty;
     public int Row { get; set; }
     public int Column { get; set; }
+    public int WeaponType { get; set; }
 }

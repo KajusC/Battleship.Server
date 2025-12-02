@@ -10,4 +10,5 @@ public sealed class ShotResolutionMessage
     public string? ShipName { get; set; }
     public bool Victory { get; set; }
     public string? NextPlayerId { get; set; }
+    public int? WeaponType { get; set; }
 }

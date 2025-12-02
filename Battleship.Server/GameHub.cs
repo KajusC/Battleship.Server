@@ -1,12 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Battleship.Server.Classes;
 using Battleship.Server.Models;
 using Battleship.Server.Models.Dtos;
 using Battleship.Server.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Battleship.Server;
 
@@ -127,20 +128,60 @@ public class GameHub : Hub
 
         return placementResult;
     }
+    //public async Task<ShotResolutionDto> Fire2(ShotRequestDto request)
+    //{
+    //    ShotHandler handler = new ValidateShot();
+    //    FireResult fireResult;
 
+    //    try
+    //    {
+    //        handler.process(request);
+    //        fireResult = _gameService.Fire(Context.ConnectionId, new Coordinate(request.Row, request.Column));
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        throw new HubException(ex.Message);
+    //    }
+    //    return 0;
+    //}
+    
     public async Task<ShotResolutionDto> Fire(ShotRequestDto request)
     {
         FireResult fireResult;
+        
         try
         {
-            fireResult = _gameService.Fire(Context.ConnectionId, new Coordinate(request.Row, request.Column));
+            ShotResolverAbstract resolver;
+            switch (request.WeaponType)
+            {
+                
+                case 1:
+                    resolver = new ShotResolverWeapon1(_gameService, Context.ConnectionId);
+                    break;
+                case 2:
+                    resolver = new ShotResolverWeapon2(_gameService, Context.ConnectionId);
+                    break;
+                case 3:
+                    resolver = new ShotResolverWeapon3(_gameService, Context.ConnectionId);
+                    break;
+                default:
+                    resolver = new ShotResolverWeapon0(_gameService, Context.ConnectionId);
+                    break;
+            }
+            //ShotResolverDefault resolver = new ShotResolverDefault(_gameService, Context.ConnectionId);
+            fireResult = resolver.Resolve(request);
+            //fireResult = _gameService.Fire(Context.ConnectionId, new Coordinate(request.Row, request.Column));
+            //fireResult.WeaponType = request.WeaponType;
         }
         catch (Exception ex)
         {
             throw new HubException(ex.Message);
         }
+        Console.WriteLine("Weapon Type"); 
+        Console.WriteLine(fireResult.WeaponType);
 
         var game = _gameService.GetGameByConnection(Context.ConnectionId) ?? throw new HubException("Game not found.");
+
         var shotDto = new ShotResolutionDto
         {
             GameId = game.Id,
@@ -150,7 +191,8 @@ public class GameHub : Hub
             Outcome = fireResult.Resolution.Outcome.ToString(),
             ShipName = fireResult.Resolution.Ship?.Type.ToString(),
             Victory = fireResult.IsVictory,
-            NextPlayerId = fireResult.NextPlayerId
+            NextPlayerId = fireResult.NextPlayerId,
+            WeaponType = fireResult.WeaponType,
         };
 
         await Clients.Group(game.Id).SendAsync("ShotResolved", shotDto);
@@ -179,7 +221,7 @@ public class GameHub : Hub
  
         return shotDto;
     }
-
+    
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {

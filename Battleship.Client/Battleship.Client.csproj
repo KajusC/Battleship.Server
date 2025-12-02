@@ -15,6 +15,24 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Update="UI\GameForm.resx">
+      <Generator></Generator>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Audio\Bangers\battlefield_1942.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Audio\Bangers\danger.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Audio\Bangers\danger.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Audio\Bangers\loosing.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Audio\defeat.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -28,7 +28,11 @@ public sealed class ShipQueueControl : Control
         _placedShips.Clear();
         Invalidate();
     }
-
+    public void Clear()
+    {
+        _placedShips.Clear();
+        Invalidate();
+    }
     public void MarkPlaced(string shipName)
     {
         _placedShips.Add(shipName);
