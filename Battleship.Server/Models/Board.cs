@@ -72,11 +72,12 @@ public sealed class Board
         _ships.Add(ship);
     }
 
-    public ShotResolution Shoot(Coordinate coordinate)
+    public ShotResolution Shoot(Coordinate coordinate, bool checkBounds = true, bool checkShot = true)
     {
-        EnsureWithinBounds(coordinate);
+
+        if(checkBounds) EnsureWithinBounds(coordinate);
         var cell = _cells[coordinate.Row, coordinate.Column];
-        if (cell.IsShot)
+        if (cell.IsShot && checkShot)
         {
             throw new InvalidOperationException("Coordinate already shot.");
         }

@@ -32,6 +32,7 @@
             labelServerUrl = new Label();
             labelPlayerName = new Label();
             singleplayerCheck = new CheckBox();
+            useWeaponsCheck = new CheckBox();
             comboBoxGameMode = new ComboBox();
             labelGameMode = new Label();
             SuspendLayout();
@@ -96,17 +97,33 @@
             // 
             singleplayerCheck.BackColor = Color.LightGray;
             singleplayerCheck.FlatStyle = FlatStyle.Flat;
-            singleplayerCheck.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            singleplayerCheck.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             singleplayerCheck.ForeColor = Color.DarkGreen;
-            singleplayerCheck.Location = new Point(57, 36);
+            singleplayerCheck.Location = new Point(50, 20);
             singleplayerCheck.Margin = new Padding(3, 4, 3, 4);
             singleplayerCheck.Name = "singleplayerCheck";
             singleplayerCheck.Padding = new Padding(6, 7, 6, 7);
-            singleplayerCheck.Size = new Size(229, 54);
+            singleplayerCheck.Size = new Size(150, 50);
             singleplayerCheck.TabIndex = 5;
             singleplayerCheck.Text = "Singleplayer Mode";
             singleplayerCheck.UseVisualStyleBackColor = false;
             singleplayerCheck.CheckedChanged += singleplayerCheck_CheckedChanged;
+            // 
+            // useWeaponsCheck
+            // 
+            useWeaponsCheck.BackColor = Color.LightGray;
+            useWeaponsCheck.FlatStyle = FlatStyle.Flat;
+            useWeaponsCheck.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            useWeaponsCheck.ForeColor = Color.DarkGreen;
+            useWeaponsCheck.Location = new Point(250, 20);
+            useWeaponsCheck.Margin = new Padding(3, 4, 3, 4);
+            useWeaponsCheck.Name = "useWeaponsCheck";
+            useWeaponsCheck.Padding = new Padding(6, 7, 6, 7);
+            useWeaponsCheck.Size = new Size(150, 50);
+            useWeaponsCheck.TabIndex = 5;
+            useWeaponsCheck.Text = "Use Weapons";
+            useWeaponsCheck.UseVisualStyleBackColor = false;
+            useWeaponsCheck.CheckedChanged += useWeaponsCheck_CheckedChanged;
             // 
             // comboBoxGameMode
             // 
@@ -144,6 +161,8 @@
             Controls.Add(textBoxServerUrl);
             Controls.Add(buttonConnect);
             Controls.Add(singleplayerCheck);
+            Controls.Add(useWeaponsCheck);
+
             FormBorderStyle = FormBorderStyle.FixedDialog;
             Margin = new Padding(3, 4, 3, 4);
             MaximizeBox = false;
@@ -161,6 +180,8 @@
         private System.Windows.Forms.Label labelServerUrl;
         private System.Windows.Forms.Label labelPlayerName;
         private System.Windows.Forms.CheckBox singleplayerCheck;
+        private System.Windows.Forms.CheckBox useWeaponsCheck;
+
         private System.Windows.Forms.ComboBox comboBoxGameMode;
         private System.Windows.Forms.Label labelGameMode;
 
