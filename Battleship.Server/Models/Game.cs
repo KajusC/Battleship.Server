@@ -34,7 +34,7 @@ public sealed class Game
     public GamePhase Phase
     {
         get => _phase;
-        private set
+        set
         {
             if (_phase != value)
             {
@@ -73,7 +73,7 @@ public sealed class Game
     }
 
     public string Id { get; }
-    public string? CurrentTurnPlayerId { get; private set; }
+    public string? CurrentTurnPlayerId { get; set; }
     public IGameConfigurationPrototype Configuration => _configuration;
     public Scoreboard Scoreboard => _scoreboard;
 
@@ -157,7 +157,10 @@ public sealed class Game
 
 
     }
-
+    public void Resolution()
+    {
+        //var isVictory = target.Board.AreAllShipsSunk;
+    }
     public FireResult Fire(GamePlayer shooter, Coordinate coordinate)
     {
         if (Phase != GamePhase.InProgress)
@@ -172,10 +175,9 @@ public sealed class Game
 
         var target = GetOpponent(shooter.PlayerId) ?? throw new InvalidOperationException("Opponent not found.");
         var resolution = target.Board.Shoot(coordinate);
-        var isVictory = target.Board.AreAllShipsSunk;
 
         _scoreboard.RecordShot(shooter.PlayerId, target.PlayerId, resolution.Outcome);
-
+        var isVictory = target.Board.AreAllShipsSunk;
         if (isVictory)
         {
             Phase = GamePhase.Completed;
@@ -274,7 +276,7 @@ public sealed class Game
         }
     }
 
-    private void NotifyScoreboardChange()
+    public void NotifyScoreboardChange()
     {
         foreach (var observer in _observers)
         {
@@ -289,7 +291,8 @@ public sealed record FireResult(
     Coordinate Coordinate,
     ShotResolution Resolution,
     bool IsVictory,
-    string? NextPlayerId);
+    string? NextPlayerId,
+    int WeaponType = 0);
 
 
 public class GamePlayer
@@ -300,8 +303,22 @@ public class GamePlayer
         ConnectionId = connectionId;
         Name = name;
         Board = board;
+        Ammunition = new Dictionary<int, int>()
+        {
+            { 1, 2 },
+            { 2, 1 },
+            { 3, 2 }
+        };
     }
-
+    private Dictionary<int, int> Ammunition;
+    public int GetWeaponAmmunition(int WeaponType)
+    {
+        return Ammunition[WeaponType];
+    }
+    public void UseWeaponAmmunition(int WeaponType)
+    {
+        Ammunition[WeaponType]--;
+    }
     public string PlayerId { get; }
     public string ConnectionId { get; }
     public string Name { get; }

@@ -1,5 +1,4 @@
 ﻿using Battleship.Client.Classes;
-using Battleship.Client.DesignPatterns;
 using Battleship.Server.Classes;
 using Battleship.Server.Enums;
 using Battleship.Server.Models.Dtos;

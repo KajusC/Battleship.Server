@@ -10,6 +10,7 @@ namespace Battleship.Client.UI
         public string? PlayerName { get; private set; }
         public bool isSingleplayer { get; private set; }
         public string GameMode { get; private set; } = "standard";
+        public bool useWeapons { get; private set; } = false;
 
 
         public ConnectToServer()
@@ -66,7 +67,22 @@ namespace Battleship.Client.UI
                 //this.singleplayerCheck.ForeColor = Color.DarkGreen;
             }
         }
-
+        private void useWeaponsCheck_CheckedChanged(object sender, EventArgs e)
+        {
+            Console.WriteLine("check");
+            if (this.useWeaponsCheck.Checked)
+            {
+                useWeapons = true;
+                //this.BackColor = Color.Black;
+                //this.singleplayerCheck.ForeColor = Color.White;
+            }
+            else
+            {
+                useWeapons = false;
+                //this.BackColor = Color.White;
+                //this.singleplayerCheck.ForeColor = Color.DarkGreen;
+            }
+        }
         private void comboBoxGameMode_SelectedIndexChanged(object sender, EventArgs e)
         {
             // Map display text to game mode

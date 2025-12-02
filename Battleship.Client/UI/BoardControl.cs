@@ -117,6 +117,7 @@ public sealed class BoardControl : Control
         using var missBrush = new SolidBrush(Color.FromArgb(200, Color.LightBlue));
         using var hitBrush = new SolidBrush(Color.FromArgb(220, Color.IndianRed));
         using var sunkBrush = new SolidBrush(Color.FromArgb(255, 105, 97));
+        using var notUnknownBrush = new SolidBrush(Color.FromArgb(200, 200,200, 200));
 
         for (var row = 0; row < size; row++)
         {
@@ -138,6 +139,9 @@ public sealed class BoardControl : Control
                         break;
                     case CellState.Sunk:
                         g.FillRectangle(sunkBrush, rect);
+                        break;
+                    case CellState.NotUnknown:
+                        g.FillRectangle(notUnknownBrush, rect);
                         break;
                 }
 
