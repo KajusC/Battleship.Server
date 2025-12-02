@@ -3,6 +3,7 @@ using Battleship.Client.Models;
 using Battleship.Client.Models.Command;
 using Battleship.Client.Networking;
 using Battleship.Client.Services;
+using Battleship.Client.Patterns.Mediator;
 using System.Data;
 using System.Media;
 
@@ -32,9 +33,6 @@ public sealed class GameForm : Form
     private readonly ActionButton _submitPlacementsButton;
     //Command
     private PlacementController placementsController = new();
-    private ShipPlacement? tempPl = null;
-    private string commandType = "Place";
-    private ShipPlacements placemenetsReceiver;
 
     private string serverIp;
     private string _gameMode;
@@ -46,8 +44,6 @@ public sealed class GameForm : Form
 
     private readonly List<ShipDefinition> _fleet = new();
     private readonly List<ShipPlacement> _placements = new();
-    private ShipDefinition? _currentShip;
-    private ShipOrientation _currentOrientation = ShipOrientation.Horizontal;
     private bool _isMyTurn;
     private string _playerName;
     private string? _opponentName;
@@ -58,6 +54,9 @@ public sealed class GameForm : Form
     private GameState gameState = new StartingState();
     private int playerPoints = 0;
     private int opponentPoints = 0;
+
+    private readonly IPlacementMediator _placementMediator;
+
     public GameForm(string serverIp, string playerName, bool isSinglePlayer, string gameMode = "standard", bool useWeapons = false)
     {
         this.serverIp = serverIp;
@@ -78,7 +77,6 @@ public sealed class GameForm : Form
         KeyPreview = true;
 
         //Command
-        placemenetsReceiver = new(_placements);
 
 
         PlayMusic(MusicType.Menu);
@@ -191,7 +189,7 @@ public sealed class GameForm : Form
             Text = "C:Submit",
             Location = new Point(880, 560)
         };
-        _submitPlacementsButton.Click += (_, _) => SubmitPlacements();
+        _submitPlacementsButton.Click += async (_, _) => await SubmitPlacementsAsync();
 
 
         Controls.AddRange(new Control[]
@@ -217,6 +215,18 @@ public sealed class GameForm : Form
             //
         });
 
+        _placementMediator = new PlacementMediator(
+            _playerBoardControl,
+            _shipQueueControl,
+            _logControl,
+            _revertButton,
+            _resetButton,
+            placementsController,
+            _placements,
+            positionMementos,
+            _playerBoardState
+        );
+
         _client = new GameClient($"{serverIp}/gamehub");
         RegisterClientEvents();
 
@@ -240,35 +250,7 @@ public sealed class GameForm : Form
             return;
         }
 
-        if (positionMementos.Count == 0)
-        {
-            AddLog("No placements to revert.");
-            return;
-        }
-
-        var previousMemento = positionMementos[positionMementos.Count - 1];
-        positionMementos.RemoveAt(positionMementos.Count - 1);
-
-        _placements.Clear();
-        _placements.AddRange(previousMemento.GetSavedPlacements());
-        _playerBoardState = previousMemento.GetBoardState();
-        placementsController.RestoreCommandStack(previousMemento.GetCommandStack());
-
-        _playerBoardControl.Board = _playerBoardState;
-        
-        // Update the visual representation of ship placements
-        UpdateShipPlacements();
-        
-        // Reset ship queue and mark placed ships
-        _shipQueueControl.SetFleet(_fleet);
-        foreach (var placement in _placements)
-        {
-            _shipQueueControl.MarkPlaced(placement.Name);
-        }
-
-        AdvancePlacementQueue();
-        UpdatePlacementButtons();
-        AddLog("Reverted to previous state.");
+        _placementMediator.HandleRevert();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -429,163 +411,18 @@ public sealed class GameForm : Form
     private void StartPlacementPhase(GameStartMessage message)
     {
         _stage = GameStage.Placement;
-        _fleet.Clear();
-        _fleet.AddRange(message.Fleet.Select(f => new ShipDefinition(f.Name, f.Length)));
-        _shipQueueControl.SetFleet(_fleet);
-        _placements.Clear();
-        positionMementos.Clear(); // Clear mementos when starting a new placement phase
-        _playerBoardState.Clear(CellState.Unknown);
-        _playerBoardControl.Board = _playerBoardState;
-        _opponentBoardControl.Board = _opponentBoardState;
-        AdvancePlacementQueue();
-        AddLog("Place your ships on the left board. Left click to place, right click to rotate, or press R to rotate.");
-        AddLog("Use 'Revert last ship' button or ESC to undo, 'Reset placement' to start over.");
+        _placementMediator.StartPlacementPhase(message.Fleet.Select(f => new ShipDefinition(f.Name, f.Length)));
         Invalidate();
-    }
-
-    private void AdvancePlacementQueue()
-    {
-        _currentShip = _fleet.FirstOrDefault(ship => _placements.All(p => !string.Equals(p.Name, ship.Name, StringComparison.OrdinalIgnoreCase)));
-        _shipQueueControl.SetCurrentShip(_currentShip?.Name);
-        UpdatePlacementButtons();
-        Invalidate();
-    }
-
-    /// <summary>
-    /// Updates the enabled state of placement-related buttons based on current state
-    /// </summary>
-    private void UpdatePlacementButtons()
-    {
-        _revertButton.Enabled = positionMementos.Count > 0;
-        _resetButton.Enabled = _placements.Count > 0;
     }
 
     private void PlayerBoardOnCellClicked(object? sender, BoardCellEventArgs e)
     {
-        if (e.Button == MouseButtons.Right)
-        {
-            ToggleOrientation();
-            return;
-        }
-
         if (_stage != GameStage.Placement)
         {
             return;
         }
-        switch (commandType)
-        {
-            case "Place":
-                if (_currentShip is null)
-                {
-                    AddLog($"All fleet is in place.");
-                    return;
-                }
-                if (!CanPlaceShip(e.Row, e.Column, _currentShip.Length, _currentOrientation))
-                {
-                    SystemSounds.Beep.Play();
-                    AddLog($"Cannot place {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
-                    return;
-                }
-                SaveMemento();
-                ShipPlacement placement = new ShipPlacement(_currentShip.Name, e.Row, e.Column, _currentOrientation);
-                placementsController.add(new PlaceCommand(placemenetsReceiver, placement));
-                break;
-            case "Move":
-                if (tempPl == null)
-                {
-                    foreach (var p in _placements) if (p.Column == e.Column && p.Row == e.Row) tempPl = p;
-                    if (tempPl == null) break;
-                    AddLog($"Selected place {tempPl.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
-                }
-                else
-                {
-                    var results1 = _fleet.First(a => a.Name == tempPl.Name);
-                    if (!CanPlaceShip(e.Row, e.Column, results1.Length, _currentOrientation))
-                    {
-                        SystemSounds.Beep.Play();
-                        AddLog($"Cannot move {_currentShip.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
-                        return;
-                    }
-                    AddLog($"New place {tempPl.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
-                    SaveMemento();
-                    ShipPlacement pp = new ShipPlacement(tempPl.Name, e.Row, e.Column, tempPl.Orientation);
-                    placementsController.add(new MoveCommand(placemenetsReceiver, tempPl, pp));
-                    tempPl = null;
-                }
-                break;
-            case "Rotate":
-                ShipPlacement? pl = null;
-                int ind = -1;
-                for (int i = 0; i < _placements.Count; i++)
-                {
-                    var p = _placements[i];
-                    if (p.Column == e.Column && p.Row == e.Row) 
-                    {
-                        ind = i;
-                        break;
-                    }
-                }
-                if (ind == -1) 
-                {
-                    AddLog($"No ship found at {(char)('A' + e.Column)}{e.Row + 1}.");
-                    break;
-                }
-                
-                var shipToRotate = _placements[ind];
-                var results2 = _fleet.First(a => a.Name == shipToRotate.Name);
-                var newOrientation = shipToRotate.Orientation == ShipOrientation.Horizontal 
-                    ? ShipOrientation.Vertical 
-                    : ShipOrientation.Horizontal;
 
-                // Temporarily clear the ship's current position for validation
-                for (var i = 0; i < results2.Length; i++)
-                {
-                    var r = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Row : shipToRotate.Row + i;
-                    var c = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Column + i : shipToRotate.Column;
-                    _playerBoardState[r, c] = CellState.Unknown;
-                }
-
-                if (!CanPlaceShip(shipToRotate.Row, shipToRotate.Column, results2.Length, newOrientation))
-                {
-                    SystemSounds.Beep.Play();
-                    AddLog($"Cannot rotate {shipToRotate.Name} at {(char)('A' + e.Column)}{e.Row + 1}.");
-                    // Restore the ship's original position
-                    for (var i = 0; i < results2.Length; i++)
-                    {
-                        var r = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Row : shipToRotate.Row + i;
-                        var c = shipToRotate.Orientation == ShipOrientation.Horizontal ? shipToRotate.Column + i : shipToRotate.Column;
-                        _playerBoardState[r, c] = CellState.Ship;
-                    }
-                    return;
-                }
-                
-                SaveMemento();
-                placementsController.add(new RotateCommand(placemenetsReceiver, shipToRotate));
-                AddLog($"Rotated {shipToRotate.Name} to {newOrientation}.");
-                break;
-
-
-        }
-        //_shipQueueControl.MarkPlaced(_currentShip.Name);
-
-        UpdateShipPlacements();
-        AdvancePlacementQueue();
-
-        //if (_currentShip is null)
-        //{
-        //    _ = SubmitPlacementsAsync();
-        //}
-    }
-    private void SubmitPlacements()
-    {
-        if (_currentShip is null)
-        {
-            _ = SubmitPlacementsAsync();
-        }
-        else
-        {
-            AddLog($"Please place all the ships.");
-        }
+        _placementMediator.HandleCellClick(e.Row, e.Column, e.Button);
     }
 
     private void OpponentBoardOnCellClicked(object? sender, BoardCellEventArgs e)
@@ -659,53 +496,6 @@ public sealed class GameForm : Form
             "Completed" => GameStage.Completed,
             _ => GameStage.Connecting
         };
-    }
-
-    private bool CanPlaceShip(int row, int column, int length, ShipOrientation orientation)
-    {
-        if (orientation == ShipOrientation.Horizontal)
-        {
-            if (column + length > _playerBoardState.Size)
-            {
-                return false;
-            }
-        }
-        else
-        {
-            if (row + length > _playerBoardState.Size)
-            {
-                return false;
-            }
-        }
-
-        for (var i = 0; i < length; i++)
-        {
-            var r = orientation == ShipOrientation.Horizontal ? row : row + i;
-            var c = orientation == ShipOrientation.Horizontal ? column + i : column;
-            if (_playerBoardState[r, c] == CellState.Ship)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Places a ship on the board and creates a memento for undo functionality
-    /// Memento pattern: Saves state after each ship placement
-    /// </summary>
-    private void PlaceShip(int row, int column, ShipDefinition ship)
-    {
-        for (var i = 0; i < ship.Length; i++)
-        {
-            var r = _currentOrientation == ShipOrientation.Horizontal ? row : row + i;
-            var c = _currentOrientation == ShipOrientation.Horizontal ? column + i : column;
-            _playerBoardState[r, c] = CellState.Ship;
-        }
-
-        //_placements.Add(new ShipPlacement(ship.Name, row, column, _currentOrientation));
-        _playerBoardControl.Invalidate();
     }
 
     private void ApplyShot(ShotResolutionMessage message)
@@ -798,20 +588,6 @@ public sealed class GameForm : Form
         Invalidate();
     }
 
-    /* No longer needed - scoreboard updates via Observer pattern through SignalR
-    private void UpdateScoreboardFromShot(ShotResolutionMessage message)
-    {
-        // This method is kept for reference but is no longer used
-        // The server now sends ScoreboardDto via observer pattern
-    }
-
-    private double CalculateAccuracy(BoardState board)
-    {
-        // This method is kept for reference but is no longer used
-        return 0.0;
-    }
-    */
-
     private void MarkShipAsSunkOnPlayerBoard(string shipName)
     {
         var placement = _placements.FirstOrDefault(p => string.Equals(p.Name, shipName, StringComparison.OrdinalIgnoreCase));
@@ -849,73 +625,26 @@ public sealed class GameForm : Form
             return;
         }
         
-        SaveMemento();
-        
-        while (!placementsController.IsEmpty())
-        {
-            placementsController.undo();
-        }
-        
-        // Clear placements and board
-        _placements.Clear();
-        _playerBoardState.Clear(CellState.Unknown);
-        _playerBoardControl.Board = _playerBoardState;
-        _playerBoardControl.Invalidate();
-        
-        // Reset ship queue to show all ships as unplaced
-        _shipQueueControl.SetFleet(_fleet);
-        
-        AdvancePlacementQueue();
-        UpdatePlacementButtons();
-        AddLog("Placement reset. Use 'Revert last action' to undo this reset.");
+        _placementMediator.HandleReset();
     }
 
     private void ToggleOrientation()
     {
-        _currentOrientation = _currentOrientation == ShipOrientation.Horizontal
-            ? ShipOrientation.Vertical
-            : ShipOrientation.Horizontal;
-        AddLog($"Orientation set to {_currentOrientation}.");
+        _placementMediator.HandleRotate();
     }
     //Command
-    private void UpdateShipPlacements()
-    {
-        _playerBoardState.Clear(CellState.Unknown);
-        _shipQueueControl.Clear();
-        foreach (var p in _placements)
-        {
-            ShipDefinition sDef = null;
-            foreach (var f in _fleet)
-            {
-                if (f.Name == p.Name) sDef = f;
-            }
-            if (sDef == null) continue;
-            for (var i = 0; i < sDef.Length; i++)
-            {
-                var r = p.Orientation == ShipOrientation.Horizontal ? p.Row : p.Row + i;
-                var c = p.Orientation == ShipOrientation.Horizontal ? p.Column + i : p.Column;
-                _playerBoardState[r, c] = CellState.Ship;
-            }
-            _shipQueueControl.MarkPlaced(p.Name);
-        }
-        _playerBoardControl.Invalidate();
-    }
 
     private void Place()
     {
-        commandType = "Place";
-        AddLog($"Command: Place placement.");
+        _placementMediator.SetCommandType("Place");
     }
     private void Rotate()
     {
-        commandType = "Rotate";
-        AddLog($"Command: Rotate.");
+        _placementMediator.SetCommandType("Rotate");
     }
     private void Move()
     {
-        commandType = "Move";
-        tempPl = null;
-        AddLog($"Command: Move.");
+        _placementMediator.SetCommandType("Move");
     }
 
     //Template
@@ -1076,11 +805,5 @@ public sealed class GameForm : Form
         this.gameState.PlayMusic();
 
         //determine
-    }
-
-    private void SaveMemento()
-    {
-        var memento = new PositionMemento(this._placements, this._playerBoardState, placementsController.GetCommandStack());
-        positionMementos.Add(memento);
     }
 }

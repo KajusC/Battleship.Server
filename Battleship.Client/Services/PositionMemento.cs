@@ -3,7 +3,7 @@ using Battleship.Client.Models.Command;
 
 namespace Battleship.Client.Services
 {
-    internal class PositionMemento
+    public class PositionMemento
     {
         private readonly List<ShipPlacement> _placementList;
         private readonly BoardState _boardState;
