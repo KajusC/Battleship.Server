@@ -500,11 +500,18 @@ public sealed class GameForm : Form
 
     private void ApplyShot(ShotResolutionMessage message)
     {
-        var isPlayerShooter = string.Equals(message.ShooterId, _client.PlayerId, StringComparison.Ordinal);
-        var targetBoard = string.Equals(message.TargetPlayerId, _client.PlayerId, StringComparison.Ordinal)
-            ? _playerBoardState
-            : _opponentBoardState;
+        Console.WriteLine("shot applied");
 
+        var isPlayerShooter = string.Equals(message.ShooterId, _client.PlayerId, StringComparison.Ordinal);
+        BoardState? targetBoard = string.Equals(message.TargetPlayerId, _client.PlayerId, StringComparison.Ordinal)
+            ? _playerBoardControl.Board
+            : _opponentBoardControl.Board;
+        if (targetBoard == null) 
+        {
+            return;
+        }
+        Console.WriteLine(targetBoard);
+        
         var row = message.Target.Row;
         var column = message.Target.Column;
 
@@ -800,10 +807,7 @@ public sealed class GameForm : Form
     public void SetGameState(GameState gameState)
     {
         if (this.gameState.GetType() == gameState.GetType()) return;
-        //this.gameState.StopMusic();
         this.gameState = gameState;
         this.gameState.PlayMusic();
-
-        //determine
     }
 }

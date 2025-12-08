@@ -68,7 +68,6 @@ public sealed class GameClient : IAsyncDisposable
             Column = column,
             WeaponType = WeaponType
         };
-        Console.WriteLine("FireAsync {0}",request.WeaponType);
         return _connection.InvokeAsync<ShotResolutionMessage>("Fire", request);
     }
 

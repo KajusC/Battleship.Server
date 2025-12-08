@@ -5,19 +5,20 @@ using System.Data.Common;
 
 namespace Battleship.Server.Classes
 {
-    public class ShotResolverAbstract
+    public abstract class ShotResolverAbstract
     {
         protected GameService gameService;
         protected Game game;
         protected string connectionId;
         protected bool changeTurn = true;
-        protected List<Coordinate> Coordinates = new List<Coordinate>();
         public ShotResolverAbstract( GameService gameService,string connectionId)
         {
             this.gameService = gameService;
             this.connectionId = connectionId;
             //this.game = game;
         }
+        public abstract List<Coordinate> GetCoordinates();
+        public abstract void UseAmmunition(GamePlayer gamePlayer, int weaponType);
 
         public FireResult Resolve(ShotRequestDto request)
         {
@@ -38,21 +39,23 @@ namespace Battleship.Server.Classes
             int Column = request.Column;
             Coordinate coordinate = new Coordinate(Row, Column);
             var target = game.GetOpponent(shooter.PlayerId) ?? throw new InvalidOperationException("Opponent not found.");
+            Console.WriteLine("testas");
             var resolution = target.Board.Shoot(coordinate);
 
-            if (WeaponType > 0)
+            List<Coordinate> Coordinates = GetCoordinates();
+
+
+            UseAmmunition(shooter, WeaponType);
+            
+            foreach (Coordinate co in Coordinates)
             {
-                if (shooter.GetWeaponAmmunition(WeaponType) == 0) throw new Exception("Out of ammo");
-                shooter.UseWeaponAmmunition(WeaponType);
-                foreach (Coordinate co in Coordinates)
+                Coordinate c = new Coordinate(Row + co.Row, Column + co.Column);
+                if (c.Row >= 0 && c.Row < game._boardSize && c.Column >= 0 && c.Column < game._boardSize)
                 {
-                    Coordinate c = new Coordinate(Row + co.Row, Column + co.Column);
-                    if (c.Row >= 0 && c.Row < game._boardSize && c.Column >= 0 && c.Column < game._boardSize)
-                    {
-                        target.Board.Shoot(c, false, false);
-                    }
+                    target.Board.Shoot(c, false, false);
                 }
             }
+
             game.Scoreboard.RecordShot(shooter.PlayerId, target.PlayerId, resolution.Outcome);
             var isVictory = target.Board.AreAllShipsSunk;
             if (isVictory)
@@ -90,22 +93,51 @@ namespace Battleship.Server.Classes
         public ShotResolverWeapon0(GameService gameService, string connectionId) : base(gameService, connectionId)
         {
         }
+        public override List<Coordinate> GetCoordinates()
+        {
+            List<Coordinate> Coordinates = new List<Coordinate>();
+            return Coordinates;
+        }
 
+        public override void UseAmmunition(GamePlayer shooter, int weaponType)
+        {
+            return;
+        }
     }
     public class ShotResolverWeapon1 : ShotResolverAbstract
     {
         public ShotResolverWeapon1(GameService gameService, string connectionId) : base(gameService, connectionId)
         {
+
+        }
+        public override List<Coordinate> GetCoordinates()
+        {
+            List<Coordinate> Coordinates = new List<Coordinate>();
+            
             Coordinates.Add(new Coordinate(0, 0 + 1));
             Coordinates.Add(new Coordinate(0 + 1, 0));
             Coordinates.Add(new Coordinate(0 - 1, 0));
             Coordinates.Add(new Coordinate(0, 0 - 1));
+            
+            return Coordinates;
+        }
+
+        public override void UseAmmunition(GamePlayer shooter, int weaponType)
+        {
+            if(shooter.GetWeaponAmmunition(weaponType)==0) throw new Exception("Out of ammo");
+            shooter.UseWeaponAmmunition(weaponType);
         }
     }
     public class ShotResolverWeapon2 : ShotResolverAbstract
     {
         public ShotResolverWeapon2(GameService gameService, string connectionId) : base(gameService, connectionId)
         {
+
+        }
+        public override List<Coordinate> GetCoordinates()
+        {
+            List<Coordinate> Coordinates = new List<Coordinate>();
+
             Coordinates.Add(new Coordinate(0, 0 + 1));
             Coordinates.Add(new Coordinate(0 + 1, 0));
             Coordinates.Add(new Coordinate(0 - 1, 0));
@@ -114,6 +146,14 @@ namespace Battleship.Server.Classes
             Coordinates.Add(new Coordinate(0 + 1, 0 - 1));
             Coordinates.Add(new Coordinate(0 - 1, 0 - 1));
             Coordinates.Add(new Coordinate(0 - 1, 0 + 1));
+
+            return Coordinates;
+        }
+
+        public override void UseAmmunition(GamePlayer shooter, int weaponType)
+        {
+            if (shooter.GetWeaponAmmunition(weaponType) == 0) throw new Exception("Out of ammo");
+            shooter.UseWeaponAmmunition(weaponType);
         }
     }
     public class ShotResolverWeapon3 : ShotResolverAbstract
@@ -121,6 +161,17 @@ namespace Battleship.Server.Classes
         public ShotResolverWeapon3(GameService gameService, string connectionId) : base(gameService, connectionId)
         {
             changeTurn = false;
+        }
+        public override List<Coordinate> GetCoordinates()
+        {
+            List<Coordinate> Coordinates = new List<Coordinate>();
+            return Coordinates;
+        }
+
+        public override void UseAmmunition(GamePlayer shooter, int weaponType)
+        {
+            if (shooter.GetWeaponAmmunition(weaponType) == 0) throw new Exception("Out of ammo");
+            shooter.UseWeaponAmmunition(weaponType);
         }
     }
 }
