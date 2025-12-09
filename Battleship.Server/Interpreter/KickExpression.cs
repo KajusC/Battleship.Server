@@ -9,22 +9,22 @@ namespace Battleship.Server.Interpreter
         private readonly GameService _gameService = GameService.Instance;
         public void Interpret(InterpreterContext context)
         {
-            if (context.Args.Length < 2)
+            if (context.InputArgs.Length < 2)
             {
-                Console.WriteLine("Usage: kick <player name>");
+                context.Output = "Usage: kick <player name>";
                 return;
             }
 
-            var playerName = context.Args[1];
+            var playerName = context.InputArgs[1];
             var game = _gameService.RemovePlayerByName(playerName);
             
             if (game != null)
             {
-                Console.WriteLine($"Player '{playerName}' kicked.");
+                context.Output = $"Player '{playerName}' kicked.";
             }
             else
             {
-                Console.WriteLine($"Player '{playerName}' not found.");
+                context.Output = $"Player '{playerName}' not found.";
             }
         }
     }

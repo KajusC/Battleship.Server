@@ -6,8 +6,8 @@ namespace Battleship.Server.Interpreter
     {
         public void Interpret(InterpreterContext context)
         {
-            var cmd = context.Args.Length > 0 ? context.Args[0] : "";
-            Console.WriteLine($"Unknown command: '{cmd}'. Type 'help' for available commands.");
+            var cmd = context.InputArgs.Length > 0 ? context.InputArgs[0] : "";
+            context.Output = $"Unknown command: '{cmd}'. Type 'help' for available commands.";
         }
     }
 }

@@ -6,7 +6,7 @@ namespace Battleship.Server.Interpreter
     {
         public void Interpret(InterpreterContext context)
         {
-            Console.WriteLine("Stopping server...");
+            context.Output = "Stopping server...";
             context.Lifetime.StopApplication();
         }
     }

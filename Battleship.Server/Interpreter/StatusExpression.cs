@@ -8,9 +8,9 @@ namespace Battleship.Server.Interpreter
         private readonly GameService _gameService = GameService.Instance;
         public void Interpret(InterpreterContext context)
         {
-            Console.WriteLine($"Active Games: {_gameService.ActiveGamesCount}");
-            Console.WriteLine($"Connected Players: {_gameService.ConnectedPlayersCount}");
-            Console.WriteLine($"All Users: {_gameService.GetAllUsers()}");
+            context.Output = $"Active Games: {_gameService.ActiveGamesCount}\n";
+            context.Output += $"Connected Players: {_gameService.ConnectedPlayersCount}\n";
+            context.Output += $"All Users: {_gameService.GetAllUsers()}";
         }
     }
 }

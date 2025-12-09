@@ -10,22 +10,23 @@ namespace Battleship.Server.Services
     public class ConsoleCommandService : BackgroundService
     {
         private readonly IHostApplicationLifetime _lifetime;
+        private readonly ILogger<ConsoleCommandService> _logger;
 
-        public ConsoleCommandService(IHostApplicationLifetime lifetime)
+        public ConsoleCommandService(IHostApplicationLifetime lifetime, ILogger<ConsoleCommandService> logger)
         {
             _lifetime = lifetime;
+            _logger = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Yield to let the application start up before printing prompt
             await Task.Yield();
             
-            // Wait a bit more to ensure startup logs are done
             await Task.Delay(1000, stoppingToken);
 
-            Console.WriteLine("\nConsole Command Service Started. Type 'help' for commands.");
-            Console.Write("> ");
+            _logger.LogInformation("Console Command Service Started. Type 'help' for commands.");
+            Console.Write(new string('-', 10));
+            Console.WriteLine('\n');
 
             var inputBuffer = new StringBuilder();
 
@@ -37,13 +38,13 @@ namespace Battleship.Server.Services
 
                     if (key.Key == ConsoleKey.Enter)
                     {
-                        Console.WriteLine(); // Move to next line
+                        Console.WriteLine();
                         var input = inputBuffer.ToString();
                         inputBuffer.Clear();
                         
                         if (!string.IsNullOrWhiteSpace(input))
                         {
-                            ProcessCommand(input);
+                            _processCommand(input);
                         }
                         Console.Write("> ");
                     }
@@ -52,7 +53,7 @@ namespace Battleship.Server.Services
                         if (inputBuffer.Length > 0)
                         {
                             inputBuffer.Length--;
-                            Console.Write("\b \b"); // Erase character from console
+                            Console.Write("\b \b");
                         }
                     }
                     else
@@ -68,17 +69,21 @@ namespace Battleship.Server.Services
             }
         }
 
-        private void ProcessCommand(string input)
+        private void _processCommand(string input)
         {
             try
             {
                 var context = new InterpreterContext(input, _lifetime);
                 var expression = CommandParser.Parse(input);
                 expression.Interpret(context);
+                if (!string.IsNullOrEmpty(context.Output))
+                {
+                    Console.WriteLine(context.Output);
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing command: {ex.Message}");
+                _logger.LogError($"Error processing command: {ex.Message}");
             }
         }
     }
