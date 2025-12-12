@@ -11,7 +11,6 @@ namespace Battleship.Client.Services
 
         public PositionMemento(List<ShipPlacement> placements, BoardState boardState, Stack<ICommand> commandStack)
         {
-            // Create deep copy of placements to prevent shared references
             _placementList = placements.Select(p => new ShipPlacement(p.Name, p.Row, p.Column, p.Orientation)).ToList();
             _boardState = boardState.Clone();
             _commandStack = new Stack<ICommand>(commandStack.Reverse());
@@ -19,7 +18,6 @@ namespace Battleship.Client.Services
 
         public List<ShipPlacement> GetSavedPlacements()
         {
-            // Return deep copy to prevent external modifications
             return _placementList.Select(p => new ShipPlacement(p.Name, p.Row, p.Column, p.Orientation)).ToList();
         }
 
