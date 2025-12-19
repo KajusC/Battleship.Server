@@ -28,14 +28,13 @@ public sealed class BoardControl : Control
         set
         {
             _board = value;
-            
-            // Dynamically adjust size based on board
+
             if (_board != null)
             {
                 int requiredSize = MarginSize * 2 + CellSize * _board.Size;
                 Size = new Size(requiredSize, requiredSize);
             }
-            
+
             Invalidate();
         }
     }
@@ -111,50 +110,48 @@ public sealed class BoardControl : Control
 
     private void DrawBoard(Graphics g, BoardState board)
     {
-        var size = board.Size;
         using var gridPen = new Pen(Color.Gray, 1f);
         using var shipBrush = new SolidBrush(Color.FromArgb(130, 30, 144, 255));
         using var missBrush = new SolidBrush(Color.FromArgb(200, Color.LightBlue));
         using var hitBrush = new SolidBrush(Color.FromArgb(220, Color.IndianRed));
         using var sunkBrush = new SolidBrush(Color.FromArgb(255, 105, 97));
-        using var notUnknownBrush = new SolidBrush(Color.FromArgb(200, 200,200, 200));
+        using var notUnknownBrush = new SolidBrush(Color.FromArgb(200, 200, 200, 200));
 
-        for (var row = 0; row < size; row++)
+        foreach (var cell in board)
         {
-            for (var col = 0; col < size; col++)
+            var row = cell.Row;
+            var col = cell.Column;
+            var rect = GetCellRectangle(row, col);
+            var state = cell.State;
+
+            switch (state)
             {
-                var rect = GetCellRectangle(row, col);
-                var state = board[row, col];
+                case CellState.Ship when _showShips:
+                    g.FillRectangle(shipBrush, rect);
+                    break;
+                case CellState.Miss:
+                    g.FillRectangle(missBrush, rect);
+                    break;
+                case CellState.Hit:
+                    g.FillRectangle(hitBrush, rect);
+                    break;
+                case CellState.Sunk:
+                    g.FillRectangle(sunkBrush, rect);
+                    break;
+                case CellState.NotUnknown:
+                    g.FillRectangle(notUnknownBrush, rect);
+                    break;
+            }
 
-                switch (state)
-                {
-                    case CellState.Ship when _showShips:
-                        g.FillRectangle(shipBrush, rect);
-                        break;
-                    case CellState.Miss:
-                        g.FillRectangle(missBrush, rect);
-                        break;
-                    case CellState.Hit:
-                        g.FillRectangle(hitBrush, rect);
-                        break;
-                    case CellState.Sunk:
-                        g.FillRectangle(sunkBrush, rect);
-                        break;
-                    case CellState.NotUnknown:
-                        g.FillRectangle(notUnknownBrush, rect);
-                        break;
-                }
+            g.DrawRectangle(gridPen, rect);
 
-                g.DrawRectangle(gridPen, rect);
-
-                if (state == CellState.Miss)
-                {
-                    DrawMissMarker(g, rect);
-                }
-                else if (state is CellState.Hit or CellState.Sunk)
-                {
-                    DrawHitMarker(g, rect);
-                }
+            if (state == CellState.Miss)
+            {
+                DrawMissMarker(g, rect);
+            }
+            else if (state is CellState.Hit or CellState.Sunk)
+            {
+                DrawHitMarker(g, rect);
             }
         }
     }
