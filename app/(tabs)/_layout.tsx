@@ -1,35 +1,23 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import CustomTabBar from "@/components/tab/CustomTabBar";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Tabs } from "expo-router";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const Tab = createBottomTabNavigator();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+export default function _layout() {
   return (
     <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+        animation: "fade",
+      }}
+    >
+      <Tabs.Screen name="Index" options={{ title: "Home" }} />
+      <Tabs.Screen name="Insights" options={{ title: "Insights" }} />
+      <Tabs.Screen name="Scan" options={{ title: "Scan" }} />
+      <Tabs.Screen name="Search" options={{ title: "Search" }} />
+      <Tabs.Screen name="Profile" options={{ title: "Profile" }} />
     </Tabs>
   );
 }
