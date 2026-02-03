@@ -1,11 +1,11 @@
 import { useTheme } from "@/hooks/useTheme";
 import React from "react";
 import {
-    Image,
-    ImageSourcePropType,
-    StyleSheet,
-    Text,
-    View,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 export default function Card({
@@ -22,7 +22,7 @@ export default function Card({
   const { colors } = useTheme();
   return (
     <View
-      className="rounded-lg p-4 m-2 shadow-md"
+      className="rounded-[20px] p-4 shadow-md"
       style={{ backgroundColor: colors.cardBorder }}
     >
       <View className="flex-col items-start mb-4">

@@ -13,11 +13,11 @@ export default function _layout() {
         animation: "fade",
       }}
     >
-      <Tabs.Screen name="Index" options={{ title: "Home" }} />
-      <Tabs.Screen name="Insights" options={{ title: "Insights" }} />
-      <Tabs.Screen name="Scan" options={{ title: "Scan" }} />
-      <Tabs.Screen name="Search" options={{ title: "Search" }} />
-      <Tabs.Screen name="Profile" options={{ title: "Profile" }} />
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+      <Tabs.Screen name="scan" options={{ title: "Scan" }} />
+      <Tabs.Screen name="search" options={{ title: "Search" }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>
   );
 }

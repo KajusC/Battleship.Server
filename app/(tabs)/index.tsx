@@ -50,28 +50,28 @@ export default function Index() {
         {/* Cards Section for grocery */}
         <GraphCard />
         <View className="flex-row flex-wrap justify-center gap-4 mt-6 px-4 mb-10 w-full max-w-lg">
-          <View className="w-[45%]">
+          <View className="w-[40%]">
             <Card
               title="Fruits"
               imageUrl={require("../../assets/icons/apple.png")}
               description="$ 150"
             />
           </View>
-          <View className="w-[45%]">
+          <View className="w-[40%]">
             <Card
               title="Vegetables"
               imageUrl={require("../../assets/icons/broccoli.png")}
               description="$ 90"
             />
           </View>
-          <View className="w-[45%]">
+          <View className="w-[40%]">
             <Card
               title="Dairy"
               imageUrl={require("../../assets/icons/milk.png")}
               description="$ 60"
             />
           </View>
-          <View className="w-[45%]">
+          <View className="w-[40%]">
             <Card
               title="Bakery"
               imageUrl={require("../../assets/icons/bread.png")}

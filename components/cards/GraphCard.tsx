@@ -1,13 +1,14 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { LineChart } from "react-native-gifted-charts";
 
 interface GraphCardProps {
   title?: string;
   currentAmount?: number;
   lastMonthAmount?: number;
   percentageChange?: number;
+  data?: { value: number }[];
 }
 
 export default function GraphCard({
@@ -15,13 +16,20 @@ export default function GraphCard({
   currentAmount = 428.5,
   lastMonthAmount = 382.0,
   percentageChange = 12,
+  data = [
+    { value: 10 },
+    { value: 30 },
+    { value: 20 },
+    { value: 50 },
+    { value: 40 },
+  ],
 }: GraphCardProps) {
   const isPositive = percentageChange >= 0;
   const { colors } = useTheme();
 
   return (
     <View
-      className="rounded-[40px] p-6 w-full max-w-sm shadow-lg"
+      className="rounded-[40px] p-6 w-full max-w-sm shadow-lg overflow-hidden"
       style={{ backgroundColor: colors.statisticsCardBackground }}
     >
       {/* Header */}
@@ -49,16 +57,22 @@ export default function GraphCard({
       </Text>
 
       {/* Graph */}
-      <Svg width="100%" height="80" viewBox="0 0 300 80">
-        <Path
-          d="M 0 60 Q 50 55, 75 50 T 150 40 Q 200 35, 225 30 T 300 10"
-          stroke="white"
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-          opacity={0.8}
+      <View style={{ height: 80, marginLeft: -20, marginBottom: -20 }}>
+        <LineChart
+          curved
+          data={data}
+          height={80}
+          width={300}
+          hideDataPoints
+          hideRules
+          hideAxesAndRules
+          color="white"
+          thickness={3}
+          initialSpacing={0}
+          endSpacing={0}
+          spacing={40}
         />
-      </Svg>
+      </View>
     </View>
   );
 }

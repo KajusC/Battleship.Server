@@ -30,7 +30,6 @@ export default function CustomTabBarButtonScan({
   const scale = useSharedValue(1);
   const pulse = useSharedValue(1);
 
-  // Subtle pulse animation
   useEffect(() => {
     pulse.value = withRepeat(
       withSequence(

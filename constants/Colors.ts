@@ -37,7 +37,7 @@ export const Colors = {
     statisticsCardBackground: "#a3b18a",
   },
   dark: {
-    background: "#02111b",
+    background: "#1a1c1b",
     backgroundSecondary: "#111827",
     backgroundTertiary: "#1F2937",
 
@@ -54,7 +54,7 @@ export const Colors = {
     border: "#374151",
     divider: "#374151",
 
-    tabBarBackground: "#111827",
+    tabBarBackground: "#272927",
     tabBarBorder: "#374151",
 
     fabInner: "#A5BFAA",
@@ -69,8 +69,8 @@ export const Colors = {
     info: "#60A5FA",
 
     card: "#1F2937",
-    cardBorder: "#30343f",
+    cardBorder: "#252826",
 
-    statisticsCardBackground: "#344e41",
+    statisticsCardBackground: "#9caf88",
   },
 };
